@@ -201,6 +201,14 @@ public class Optimizer : MonoBehaviour
 		controller.Activate (phenome);
 	}
 
+	public void RunManual ()
+	{
+		Time.timeScale = 1;
+
+		GameObject obj = Instantiate (Unit, Unit.transform.position, Unit.transform.rotation) as GameObject;
+		obj.AddComponent <ManualCarController>();
+	}
+
 	public float GetFitness (IBlackBox box)
 	{
 		if (ControllerMap.ContainsKey (box)) {
@@ -220,6 +228,10 @@ public class Optimizer : MonoBehaviour
 		if (GUI.Button (new Rect (10, 110, 100, 40), "Run best")) {
 			RunBest ();
 		}
+		if (GUI.Button (new Rect (10, 160, 100, 40), "Manual drive")) {
+			RunManual ();
+		}
+
 
 		GUI.Button (new Rect (10, Screen.height - 70, 100, 60), string.Format ("Generation: {0}\nFitness: {1:0.00}", Generation, Fitness));
 	}

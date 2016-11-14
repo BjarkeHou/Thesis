@@ -16,14 +16,27 @@ public class CarController : UnitController
 	IBlackBox box;
 
 	// WEATHER CONDITIONS VARIABLES
+	//	[Range (-1.0f, 1.0f)]
+	//	public float gas = 0.0f;
+	//	[Range (-1.0f, 1.0f)]
+	//	public float steer = 0.0f;
+
+
+	[Header ("Rain Settings")]
 	[Range (0.0f, 1.0f)]
 	public float rain = 0.5f;
 	private float oldTurnAngle = -1;
+	private int lostControlCounter = 0;
+	bool lostControl = false;
+	float lostControlTime = 0f;
+	Vector3 lostControlStartPos;
+	Vector3 lostControlEndPos;
+	public float penaltyTime = 20f;
+	public float penaltyDist = 2f;
 
 	// Use this for initialization
 	void Start ()
 	{
-		oldTurnAngle = this.transform.forward.y;
 	}
 	
 	// Update is called once per frame
@@ -108,15 +121,40 @@ public class CarController : UnitController
 			var steer = (float)outputArr [0] * 2 - 1;
 			var gas = (float)outputArr [1] * 2 - 1;
 
+	
 			var moveDist = gas * Speed * Time.deltaTime;
-			var turnAngle = steer * TurnSpeed * Time.deltaTime * gas;
+//			var turnAngle = steer * TurnSpeed * Time.deltaTime * gas;
+//
+//			//transform.Translate (Vector3.forward * moveDist * rain);
+//			transform.Rotate (new Vector3 (0, turnAngle, 0));
+//			//			Debug.Log (turnAngle);
+//			//transform.Rotate ((new Vector3 (0, turnAngle, 0) + (rain * new Vector3 (0, oldTurnAngle, 0))));
+//			//oldTurnAngle = turnAngle;
+//			transform.Translate (Vector3.forward * moveDist);
 
-			//transform.Translate (Vector3.forward * moveDist * rain);
-			transform.Rotate (new Vector3 (0, turnAngle, 0));
-//			Debug.Log (turnAngle);
-			//transform.Rotate ((new Vector3 (0, turnAngle, 0) + (rain * new Vector3 (0, oldTurnAngle, 0))));
-			//oldTurnAngle = turnAngle;
-			transform.Translate (Vector3.forward * moveDist);
+			Debug.Log ("Gas: " + gas + " - Steer: " + steer + " - Together:" + Mathf.Abs (gas * steer));
+
+			if (Mathf.Abs (gas * steer) > 1 - rain) { // Definde condition for when rain will make you slide depending on speed and steer
+				
+				InitiateLostControl ();
+			} 
+
+
+			if (lostControl) {
+				PerformLostControl ();
+			} else {
+				//Debug.Log (moveDist);
+				var turnAngle = steer * TurnSpeed * Time.deltaTime * gas;
+
+				//transform.Translate (Vector3.forward * moveDist * rain);
+				transform.Rotate (new Vector3 (0, turnAngle, 0));
+				oldTurnAngle = turnAngle;
+
+				//			Debug.Log (turnAngle);
+				//transform.Rotate ((new Vector3 (0, turnAngle, 0) + (rain * new Vector3 (0, oldTurnAngle, 0))));
+				//oldTurnAngle = turnAngle;
+				transform.Translate (Vector3.forward * moveDist);	
+			}
 		}
 	}
 
@@ -147,7 +185,7 @@ public class CarController : UnitController
 		if (CurrentPiece == 0) {
 			piece = 17;
 		}
-		float fit = Lap * piece - WallHits * 0.2f;
+		float fit = Lap * piece - WallHits * 0.2f - lostControlCounter * 1.0f;
 		//  print(string.Format("Piece: {0}, Lap: {1}, Fitness: {2}", piece, Lap, fit));
 		if (fit > 0) {
 			return fit;
@@ -174,6 +212,35 @@ public class CarController : UnitController
 		} else if (collision.collider.tag.Equals ("Wall")) {
 			WallHits++;
 		}
+	}
+
+	void InitiateLostControl ()
+	{
+		// Loose control
+		lostControlCounter++;
+		lostControlTime = Time.time;
+		lostControlStartPos = this.transform.position;
+		Vector3 fwd = transform.TransformDirection (Vector3.forward);
+		RaycastHit hit;
+		if (Physics.Raycast (transform.position, this.transform.forward, out hit, penaltyDist)) {
+			lostControlEndPos = new Vector3 (this.transform.position.x + (this.transform.forward.x * hit.distance), this.transform.position.y, this.transform.position.z + (this.transform.forward.z * hit.distance));
+		} else {
+			lostControlEndPos = new Vector3 (this.transform.position.x + (this.transform.forward.x * penaltyDist), this.transform.position.y, this.transform.position.z + (this.transform.forward.z * penaltyDist));
+		}
+		lostControl = true;
+	}
+
+	void PerformLostControl ()
+	{
+		if ((Time.time - lostControlTime) >= penaltyTime) {
+			Debug.Log ("Regained Control");
+			lostControl = false;
+		}
+		float lerpVal = (Time.time - lostControlTime) / penaltyTime;
+		//Debug.Log (lerpVal);
+
+		transform.position = Vector3.Lerp (lostControlStartPos, lostControlEndPos, lerpVal);
+		transform.Rotate (new Vector3 (0, oldTurnAngle, 0));
 	}
 
 
