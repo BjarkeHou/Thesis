@@ -123,7 +123,12 @@ public class Optimizer : MonoBehaviour
 
 		Fitness = _ea.Statistics._maxFitness;
 		Generation = _ea.CurrentGeneration;
-      
+ 
+		if ((Generation / 100) % 2 == 1) {
+			StartPos = trackStartPositions [0];
+		} else {
+			StartPos = trackStartPositions [1];
+		}
 
 		//    Utility.Log(string.Format("Moving average: {0}, N: {1}", _ea.Statistics._bestFitnessMA.Mean, _ea.Statistics._bestFitnessMA.Length));
 
