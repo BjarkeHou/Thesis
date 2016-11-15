@@ -27,8 +27,17 @@ public class Optimizer : MonoBehaviour
 	static NeatEvolutionAlgorithm<NeatGenome> _ea;
 
 	public GameObject Unit;
-	public GameObject Track1StartPos;
-	public GameObject Track2StartPos;
+	public GameObject[] trackStartPositions;
+
+	public enum Tracks
+	{
+		Track1,
+		Track2
+	}
+
+	public Tracks SelectedTrack;
+
+	public GameObject StartPos;
 
 	Dictionary<IBlackBox, UnitController> ControllerMap = new Dictionary<IBlackBox, UnitController> ();
 	private DateTime startTime;
@@ -61,6 +70,14 @@ public class Optimizer : MonoBehaviour
 	// Update is called once per frame
 	void Update ()
 	{
+		switch (SelectedTrack) {
+		case Tracks.Track1:
+			StartPos = trackStartPositions [0];
+			break;
+		case Tracks.Track2:
+			StartPos = trackStartPositions [1];
+			break;
+		}
 		Time.timeScale = evoSpeed;       
 
 		//  evaluationStartTime += Time.deltaTime;
@@ -155,7 +172,7 @@ public class Optimizer : MonoBehaviour
 
 	public void Evaluate (IBlackBox box)
 	{
-		GameObject obj = Instantiate (Unit, Track2StartPos.transform.position, Track2StartPos.transform.rotation) as GameObject;
+		GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
 		UnitController controller = obj.GetComponent<UnitController> ();
 
 		ControllerMap.Add (box, controller);
@@ -195,7 +212,7 @@ public class Optimizer : MonoBehaviour
 		// Decode the genome into a phenome (neural network).
 		var phenome = genomeDecoder.Decode (genome);
 
-		GameObject obj = Instantiate (Unit, Unit.transform.position, Unit.transform.rotation) as GameObject;
+		GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
 		UnitController controller = obj.GetComponent<UnitController> ();
 
 		ControllerMap.Add (phenome, controller);
