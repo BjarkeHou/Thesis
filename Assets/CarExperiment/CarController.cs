@@ -132,7 +132,7 @@ public class CarController : UnitController
 //			//oldTurnAngle = turnAngle;
 //			transform.Translate (Vector3.forward * moveDist);
 
-			Debug.Log ("Gas: " + gas + " - Steer: " + steer + " - Together:" + Mathf.Abs (gas * steer));
+			//Debug.Log ("Gas: " + gas + " - Steer: " + steer + " - Together:" + Mathf.Abs (gas * steer));
 
 			if (Mathf.Abs (gas * steer) > 1 - rain) { // Definde condition for when rain will make you slide depending on speed and steer
 				

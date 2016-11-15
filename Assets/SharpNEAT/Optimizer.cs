@@ -27,6 +27,8 @@ public class Optimizer : MonoBehaviour
 	static NeatEvolutionAlgorithm<NeatGenome> _ea;
 
 	public GameObject Unit;
+	public GameObject Track1StartPos;
+	public GameObject Track2StartPos;
 
 	Dictionary<IBlackBox, UnitController> ControllerMap = new Dictionary<IBlackBox, UnitController> ();
 	private DateTime startTime;
@@ -153,7 +155,7 @@ public class Optimizer : MonoBehaviour
 
 	public void Evaluate (IBlackBox box)
 	{
-		GameObject obj = Instantiate (Unit, Unit.transform.position, Unit.transform.rotation) as GameObject;
+		GameObject obj = Instantiate (Unit, Track2StartPos.transform.position, Track2StartPos.transform.rotation) as GameObject;
 		UnitController controller = obj.GetComponent<UnitController> ();
 
 		ControllerMap.Add (box, controller);
@@ -206,7 +208,7 @@ public class Optimizer : MonoBehaviour
 		Time.timeScale = 1;
 
 		GameObject obj = Instantiate (Unit, Unit.transform.position, Unit.transform.rotation) as GameObject;
-		obj.AddComponent <ManualCarController>();
+		obj.AddComponent <ManualCarController> ();
 	}
 
 	public float GetFitness (IBlackBox box)
