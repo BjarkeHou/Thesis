@@ -185,7 +185,7 @@ public class CarController : UnitController
 		if (CurrentPiece == 0) {
 			piece = 17;
 		}
-		float fit = Lap * piece - WallHits * 0.2f - lostControlCounter * 1.0f;
+		float fit = Lap * piece - WallHits * 0.5f - lostControlCounter * 1.0f;
 		//  print(string.Format("Piece: {0}, Lap: {1}, Fitness: {2}", piece, Lap, fit));
 		if (fit > 0) {
 			return fit;
