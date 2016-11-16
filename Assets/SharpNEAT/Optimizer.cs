@@ -36,8 +36,16 @@ public class Optimizer : MonoBehaviour
 	}
 
 	public Tracks SelectedTrack;
+	private int trackCounter = 0;
+	public int switchTrackAfterGames = 50;
+	public int switchRainAfterGames = 200;
+	public float minRain = 0.0f;
+	public float maxRain = 0.5f;
+	public float rainInterval = 0.05f;
+	private float rain;
+		
 
-	public GameObject StartPos;
+	private GameObject StartPos;
 
 	Dictionary<IBlackBox, UnitController> ControllerMap = new Dictionary<IBlackBox, UnitController> ();
 	private DateTime startTime;
@@ -48,6 +56,7 @@ public class Optimizer : MonoBehaviour
 
 	private uint Generation;
 	private double Fitness;
+	private double bestFitness = 0;
 
 	// Use this for initialization
 	void Start ()
@@ -61,23 +70,21 @@ public class Optimizer : MonoBehaviour
 
 		experiment.Initialize ("test1", xmlConfig.DocumentElement, NUM_INPUTS, NUM_OUTPUTS);
 
-		champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0}.champ.xml", "car", folder_prefix);
-		popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0}.pop.xml", "car", folder_prefix);       
+		champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
+		popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);       
 
 		print (champFileSavePath);
+
+		rain = minRain;
+		Unit.GetComponent<CarController> ().rain = rain;
+
+		StartPos = getTrack (SelectedTrack);
 	}
 
 	// Update is called once per frame
 	void Update ()
 	{
-		switch (SelectedTrack) {
-		case Tracks.Track1:
-			StartPos = trackStartPositions [0];
-			break;
-		case Tracks.Track2:
-			StartPos = trackStartPositions [1];
-			break;
-		}
+		
 		Time.timeScale = evoSpeed;       
 
 		//  evaluationStartTime += Time.deltaTime;
@@ -120,19 +127,68 @@ public class Optimizer : MonoBehaviour
 	{
 		Utility.Log (string.Format ("gen={0:N0} bestFitness={1:N6}",
 			_ea.CurrentGeneration, _ea.Statistics._maxFitness));
-
+		
 		Fitness = _ea.Statistics._maxFitness;
+		if (bestFitness < Fitness) {
+
+			XmlWriterSettings _xwSettings = new XmlWriterSettings ();
+			_xwSettings.Indent = true;
+			// Save genomes to xml file.        
+			DirectoryInfo dirInf = new DirectoryInfo (Application.persistentDataPath + string.Format ("/{0}", folder_prefix));
+			if (!dirInf.Exists) {
+				Debug.Log ("Creating subdirectory");
+				dirInf.Create ();
+			}
+
+			using (XmlWriter xw = XmlWriter.Create (champFileSavePath, _xwSettings)) {
+				experiment.SavePopulation (xw, new NeatGenome[] { _ea.CurrentChampGenome });
+			}
+
+			bestFitness = Fitness;
+			Debug.Log ("New best saved: " + bestFitness);
+		}
+			
 		Generation = _ea.CurrentGeneration;
  
-		if ((Generation / 100) % 2 == 1) {
-			StartPos = trackStartPositions [0];
-		} else {
-			StartPos = trackStartPositions [1];
+		if (Generation % switchTrackAfterGames == 0) {
+			StartPos = trackStartPositions [trackCounter];
+			trackCounter++;
+			if (trackCounter >= trackStartPositions.Length) {
+				trackCounter = 0;
+			}
 		}
+
+		if (Generation % switchRainAfterGames == 0 && Generation != 0) {
+			if (rain == maxRain) {
+				// STOP
+			} else {
+				rain += rainInterval;
+				Unit.GetComponent<CarController> ().rain = rain;
+
+
+				bestFitness = 0;
+
+				champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
+				popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);  		
+			}
+		} 
+
 
 		//    Utility.Log(string.Format("Moving average: {0}, N: {1}", _ea.Statistics._bestFitnessMA.Mean, _ea.Statistics._bestFitnessMA.Length));
 
     
+	}
+
+	private GameObject getTrack (Tracks t)
+	{
+		switch (t) {
+		case Tracks.Track1:
+			return trackStartPositions [0];
+		case Tracks.Track2:
+			return trackStartPositions [1];
+			
+		}
+		return null;
 	}
 
 	void ea_PauseEvent (object sender, EventArgs e)
@@ -153,9 +209,9 @@ public class Optimizer : MonoBehaviour
 		}
 		// Also save the best genome
 
-		using (XmlWriter xw = XmlWriter.Create (champFileSavePath, _xwSettings)) {
-			experiment.SavePopulation (xw, new NeatGenome[] { _ea.CurrentChampGenome });
-		}
+//		using (XmlWriter xw = XmlWriter.Create (champFileSavePath, _xwSettings)) {
+//			experiment.SavePopulation (xw, new NeatGenome[] { _ea.CurrentChampGenome });
+//		}
 		DateTime endTime = DateTime.Now;
 		Utility.Log ("Total time elapsed: " + (endTime - startTime));
 
@@ -198,31 +254,32 @@ public class Optimizer : MonoBehaviour
 
 		NeatGenome genome = null;
 
+		for (float i = 0.0f; i <= rain; i = i + rainInterval) {
+			// Try to load the genome from the XML document.
+			try {
+				using (XmlReader xr = XmlReader.Create (Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", i, folder_prefix)))
+					genome = NeatGenomeXmlIO.ReadCompleteGenomeList (xr, false, (NeatGenomeFactory)experiment.CreateGenomeFactory ()) [0];
 
-		// Try to load the genome from the XML document.
-		try {
-			using (XmlReader xr = XmlReader.Create (champFileSavePath))
-				genome = NeatGenomeXmlIO.ReadCompleteGenomeList (xr, false, (NeatGenomeFactory)experiment.CreateGenomeFactory ()) [0];
 
+			} catch (Exception e1) {
+				// print(champFileLoadPath + " Error loading genome from file!\nLoading aborted.\n"
+				//						  + e1.Message + "\nJoe: " + champFileLoadPath);
+				return;
+			}
 
-		} catch (Exception e1) {
-			// print(champFileLoadPath + " Error loading genome from file!\nLoading aborted.\n"
-			//						  + e1.Message + "\nJoe: " + champFileLoadPath);
-			return;
+			// Get a genome decoder that can convert genomes to phenomes.
+			var genomeDecoder = experiment.CreateGenomeDecoder ();
+
+			// Decode the genome into a phenome (neural network).
+			var phenome = genomeDecoder.Decode (genome);
+
+			GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
+			UnitController controller = obj.GetComponent<UnitController> ();
+
+			ControllerMap.Add (phenome, controller);
+
+			controller.Activate (phenome);
 		}
-
-		// Get a genome decoder that can convert genomes to phenomes.
-		var genomeDecoder = experiment.CreateGenomeDecoder ();
-
-		// Decode the genome into a phenome (neural network).
-		var phenome = genomeDecoder.Decode (genome);
-
-		GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
-		UnitController controller = obj.GetComponent<UnitController> ();
-
-		ControllerMap.Add (phenome, controller);
-
-		controller.Activate (phenome);
 	}
 
 	public void RunManual ()
@@ -257,6 +314,6 @@ public class Optimizer : MonoBehaviour
 		}
 
 
-		GUI.Button (new Rect (10, Screen.height - 70, 100, 60), string.Format ("Generation: {0}\nFitness: {1:0.00}", Generation, Fitness));
+		GUI.Button (new Rect (10, Screen.height - 120, 140, 100), string.Format ("Generation: {0}\nFitness: {1:0.00}\nBestFitness: {2:0.00}\nRain: {3:0.00}", Generation, Fitness, bestFitness, rain));
 	}
 }
