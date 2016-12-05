@@ -58,6 +58,9 @@ public class Optimizer : MonoBehaviour
 	private double Fitness;
 	private double bestFitness = 0;
 
+	private NeatGenome[] map;
+	private int mapLength;
+
 	// Use this for initialization
 	void Start ()
 	{
@@ -70,10 +73,9 @@ public class Optimizer : MonoBehaviour
 
 		experiment.Initialize ("test1", xmlConfig.DocumentElement, NUM_INPUTS, NUM_OUTPUTS);
 
-		champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
-		popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);       
-
-		print (champFileSavePath);
+		mapLength = (int)((maxRain - minRain) / rainInterval);
+		map = new NeatGenome[mapLength + 2];
+		loadMapElites ();
 
 		rain = minRain;
 		Unit.GetComponent<CarController> ().rain = rain;
@@ -131,6 +133,8 @@ public class Optimizer : MonoBehaviour
 		Fitness = _ea.Statistics._maxFitness;
 		if (bestFitness < Fitness) {
 
+			map [getIndex (rain)] = _ea.CurrentChampGenome;
+
 			XmlWriterSettings _xwSettings = new XmlWriterSettings ();
 			_xwSettings.Indent = true;
 			// Save genomes to xml file.        
@@ -150,17 +154,18 @@ public class Optimizer : MonoBehaviour
 			
 		Generation = _ea.CurrentGeneration;
  
-		if (Generation % switchTrackAfterGames == 0) {
-			StartPos = trackStartPositions [trackCounter];
+		if (Generation % switchTrackAfterGames == 0 && Generation != 0 && trackStartPositions.Length > 1) {
 			trackCounter++;
+			StartPos = trackStartPositions [trackCounter];
 			if (trackCounter >= trackStartPositions.Length) {
 				trackCounter = 0;
 			}
 		}
 
-		if (Generation % switchRainAfterGames == 0 && Generation != 0) {
+		if ((Generation % switchRainAfterGames == 0 || bestFitness > StoppingFitness) && Generation != 0) {
 			if (rain == maxRain) {
 				// STOP
+				StopEA ();
 			} else {
 				rain += rainInterval;
 				Unit.GetComponent<CarController> ().rain = rain;
@@ -169,7 +174,7 @@ public class Optimizer : MonoBehaviour
 				bestFitness = 0;
 
 				champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
-				popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);  		
+				popFileSavePath = Application.persistentDataPath + string.Format ("/{0}/pop.xml", folder_prefix);  		
 			}
 		} 
 
@@ -177,6 +182,57 @@ public class Optimizer : MonoBehaviour
 		//    Utility.Log(string.Format("Moving average: {0}, N: {1}", _ea.Statistics._bestFitnessMA.Mean, _ea.Statistics._bestFitnessMA.Length));
 
     
+	}
+
+	private void loadMapElites ()
+	{
+
+		DirectoryInfo dir = new DirectoryInfo (Application.persistentDataPath + string.Format ("/{0}", folder_prefix));
+		if (dir.Exists) {
+			
+		
+			FileInfo[] info = dir.GetFiles ("*.best.xml");
+
+			NeatGenome genome = null;
+
+			var counter = 0;
+
+			// If there is not same amount of files as there is rain conditions.
+			if (map.Length != info.Length) {
+				Debug.Log (map.Length + " - " + info.Length);
+				Debug.Log ("Number of files not matching Map length! No files loaded.");
+			} else {
+			
+				foreach (FileInfo f in info) {
+			
+					try {
+
+						using (XmlReader xr = XmlReader.Create (Application.persistentDataPath + string.Format ("/{0}/{1}", folder_prefix, f.Name)))
+							map [counter] = NeatGenomeXmlIO.ReadCompleteGenomeList (xr, false, (NeatGenomeFactory)experiment.CreateGenomeFactory ()) [0];
+						counter++;
+
+					} catch (Exception e1) {
+						// print(champFileLoadPath + " Error loading genome from file!\nLoading aborted.\n"
+						//						  + e1.Message + "\nJoe: " + champFileLoadPath);
+						counter++;
+						continue;
+					}	
+
+				}
+				Debug.Log ("Filled map with " + map.Length + " elites.");
+			}
+		}
+			
+		champFileSavePath = Application.persistentDataPath + string.Format ("/{0}/{1:0.00}.best.xml", folder_prefix, rain);
+		popFileSavePath = Application.persistentDataPath + string.Format ("/{0}/pop.xml", folder_prefix);       
+
+		print (champFileSavePath);
+	}
+
+
+	private int getIndex (float rain)
+	{
+		return (int)((maxRain - minRain) / rainInterval);
 	}
 
 	private GameObject getTrack (Tracks t)
@@ -252,21 +308,12 @@ public class Optimizer : MonoBehaviour
 	{
 		Time.timeScale = 1;
 
-		NeatGenome genome = null;
-
-		for (float i = 0.0f; i <= rain; i = i + rainInterval) {
-			// Try to load the genome from the XML document.
-			try {
-				using (XmlReader xr = XmlReader.Create (Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", i, folder_prefix)))
-					genome = NeatGenomeXmlIO.ReadCompleteGenomeList (xr, false, (NeatGenomeFactory)experiment.CreateGenomeFactory ()) [0];
-
-
-			} catch (Exception e1) {
-				// print(champFileLoadPath + " Error loading genome from file!\nLoading aborted.\n"
-				//						  + e1.Message + "\nJoe: " + champFileLoadPath);
-				return;
+		for (int i = 0; i < map.Length; i++) {
+			NeatGenome genome = map [i];
+			if (genome == null) {
+				Debug.Log ("Elite was NULL.");
+				continue;
 			}
-
 			// Get a genome decoder that can convert genomes to phenomes.
 			var genomeDecoder = experiment.CreateGenomeDecoder ();
 
@@ -274,6 +321,7 @@ public class Optimizer : MonoBehaviour
 			var phenome = genomeDecoder.Decode (genome);
 
 			GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
+			obj.GetComponent<CarController> ().rain = minRain + (i * rainInterval);
 			UnitController controller = obj.GetComponent<UnitController> ();
 
 			ControllerMap.Add (phenome, controller);
