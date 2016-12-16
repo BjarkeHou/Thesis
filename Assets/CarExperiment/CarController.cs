@@ -8,6 +8,7 @@ public class CarController : UnitController
 	public float Speed = 5f;
 	public float TurnSpeed = 180f;
 	public int Lap = 1;
+	public bool passedWaypoint = false;
 	public int CurrentPiece, LastPiece;
 	bool MovingForward = true;
 	bool IsRunning;
@@ -141,7 +142,9 @@ public class CarController : UnitController
 
 
 			if (lostControl) {
-				PerformLostControl ();
+				//PerformLostControl ();
+
+				transform.Translate (Vector3.forward * moveDist);
 			} else {
 				//Debug.Log (moveDist);
 				var turnAngle = steer * TurnSpeed * Time.deltaTime * gas;
@@ -171,8 +174,9 @@ public class CarController : UnitController
 
 	public void NewLap ()
 	{        
-		if (LastPiece > 2 && MovingForward) {
-			Lap++;            
+		if (LastPiece > 2 && MovingForward && passedWaypoint) {
+			Lap++;
+			passedWaypoint = false;
 		}
 	}
 
@@ -185,12 +189,17 @@ public class CarController : UnitController
 		if (CurrentPiece == 0) {
 			piece = 17;
 		}
-		float fit = Lap * piece - WallHits * 0.5f - lostControlCounter * 1.0f;
+		float fit = ((Lap - 1) * 17) + piece - WallHits * 0.5f - lostControlCounter * 0.5f;
 		//  print(string.Format("Piece: {0}, Lap: {1}, Fitness: {2}", piece, Lap, fit));
 		if (fit > 0) {
 			return fit;
 		}
 		return 0;
+	}
+
+	public int GetHighestPiece ()
+	{
+		return (Lap - 1) * 17 + CurrentPiece;
 	}
 
 	void OnCollisionEnter (Collision collision)
@@ -201,6 +210,8 @@ public class CarController : UnitController
             
 			if ((rp.PieceNumber != LastPiece) && (rp.PieceNumber == CurrentPiece + 1 || (MovingForward && rp.PieceNumber == 0))) {
 				LastPiece = CurrentPiece;
+				if (CurrentPiece == 10)
+					passedWaypoint = true;
 				CurrentPiece = rp.PieceNumber;
 				MovingForward = true;                
 			} else {
@@ -208,6 +219,7 @@ public class CarController : UnitController
 			}
 			if (rp.PieceNumber == 0) {
 				CurrentPiece = 0;
+				NewLap ();
 			}
 		} else if (collision.collider.tag.Equals ("Wall")) {
 			WallHits++;
@@ -233,7 +245,7 @@ public class CarController : UnitController
 	void PerformLostControl ()
 	{
 		if ((Time.time - lostControlTime) >= penaltyTime) {
-			Debug.Log ("Regained Control");
+//			Debug.Log ("Regained Control");
 			lostControl = false;
 		}
 		float lerpVal = (Time.time - lostControlTime) / penaltyTime;
@@ -243,7 +255,11 @@ public class CarController : UnitController
 		transform.Rotate (new Vector3 (0, oldTurnAngle, 0));
 	}
 
-
+	void OnDestroy ()
+	{
+		if (GetHighestPiece () > 6)
+			print (GetHighestPiece () + " - " + Lap + " - " + WallHits + " - " + lostControlCounter);
+	}
 
 	//void OnGUI()
 	//{

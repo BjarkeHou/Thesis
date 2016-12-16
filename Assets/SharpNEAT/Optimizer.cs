@@ -57,6 +57,9 @@ public class Optimizer : MonoBehaviour
 	private uint Generation;
 	private double Fitness;
 	private double bestFitness = 0;
+	private double MeanFitness;
+	private int bestPiece = 0;
+	private int bestCounter = 0;
 
 	private NeatGenome[] map;
 	private int mapLength;
@@ -65,13 +68,9 @@ public class Optimizer : MonoBehaviour
 	void Start ()
 	{
 		Utility.DebugLog = true;
-		experiment = new SimpleExperiment ();
-		XmlDocument xmlConfig = new XmlDocument ();
-		TextAsset textAsset = (TextAsset)Resources.Load ("experiment.config");
-		xmlConfig.LoadXml (textAsset.text);
-		experiment.SetOptimizer (this);
 
-		experiment.Initialize ("test1", xmlConfig.DocumentElement, NUM_INPUTS, NUM_OUTPUTS);
+
+		SetupNewExperiment ();
 
 		mapLength = (int)((maxRain - minRain) / rainInterval);
 		map = new NeatGenome[mapLength + 2];
@@ -81,6 +80,17 @@ public class Optimizer : MonoBehaviour
 		Unit.GetComponent<CarController> ().rain = rain;
 
 		StartPos = getTrack (SelectedTrack);
+	}
+
+	void SetupNewExperiment ()
+	{
+		experiment = new SimpleExperiment ();
+		XmlDocument xmlConfig = new XmlDocument ();
+		TextAsset textAsset = (TextAsset)Resources.Load ("experiment.config");
+		xmlConfig.LoadXml (textAsset.text);
+		experiment.SetOptimizer (this);
+
+		experiment.Initialize ("test1", xmlConfig.DocumentElement, NUM_INPUTS, NUM_OUTPUTS);
 	}
 
 	// Update is called once per frame
@@ -131,6 +141,7 @@ public class Optimizer : MonoBehaviour
 			_ea.CurrentGeneration, _ea.Statistics._maxFitness));
 		
 		Fitness = _ea.Statistics._maxFitness;
+		MeanFitness = _ea.Statistics._meanFitness;
 		if (bestFitness < Fitness) {
 
 			map [getIndex (rain)] = _ea.CurrentChampGenome;
@@ -167,14 +178,19 @@ public class Optimizer : MonoBehaviour
 				// STOP
 				StopEA ();
 			} else {
+				StopEA ();
+
 				rain += rainInterval;
 				Unit.GetComponent<CarController> ().rain = rain;
-
 
 				bestFitness = 0;
 
 				champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
-				popFileSavePath = Application.persistentDataPath + string.Format ("/{0}/pop.xml", folder_prefix);  		
+				popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);  		
+
+				SetupNewExperiment ();
+				StartEA ();
+
 			}
 		} 
 
@@ -308,26 +324,29 @@ public class Optimizer : MonoBehaviour
 	{
 		Time.timeScale = 1;
 
-		for (int i = 0; i < map.Length; i++) {
-			NeatGenome genome = map [i];
-			if (genome == null) {
-				Debug.Log ("Elite was NULL.");
-				continue;
-			}
-			// Get a genome decoder that can convert genomes to phenomes.
-			var genomeDecoder = experiment.CreateGenomeDecoder ();
-
-			// Decode the genome into a phenome (neural network).
-			var phenome = genomeDecoder.Decode (genome);
-
-			GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
-			obj.GetComponent<CarController> ().rain = minRain + (i * rainInterval);
-			UnitController controller = obj.GetComponent<UnitController> ();
-
-			ControllerMap.Add (phenome, controller);
-
-			controller.Activate (phenome);
+		NeatGenome genome = map [bestCounter];
+		if (genome == null) {
+			Debug.Log ("Elite was NULL.");
+			return;
 		}
+		// Get a genome decoder that can convert genomes to phenomes.
+		var genomeDecoder = experiment.CreateGenomeDecoder ();
+
+		// Decode the genome into a phenome (neural network).
+		var phenome = genomeDecoder.Decode (genome);
+
+		GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
+		obj.GetComponent<CarController> ().rain = minRain + (bestCounter * rainInterval);
+		UnitController controller = obj.GetComponent<UnitController> ();
+
+		ControllerMap.Add (phenome, controller);
+
+		controller.Activate (phenome);
+
+		bestCounter++;
+		if (bestCounter >= map.Length)
+			bestCounter = 0;
+			
 	}
 
 	public void RunManual ()
@@ -362,6 +381,6 @@ public class Optimizer : MonoBehaviour
 		}
 
 
-		GUI.Button (new Rect (10, Screen.height - 120, 140, 100), string.Format ("Generation: {0}\nFitness: {1:0.00}\nBestFitness: {2:0.00}\nRain: {3:0.00}", Generation, Fitness, bestFitness, rain));
+		GUI.Button (new Rect (10, Screen.height - 140, 140, 100), string.Format ("Generation: {0}\nFitness: {1:0.00}\nBestFitness: {2:0.00}\nMeanFitness: {4:0.00}\nRain: {3:0.00}", Generation, Fitness, bestFitness, rain, MeanFitness));
 	}
 }
