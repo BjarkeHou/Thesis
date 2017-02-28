@@ -135,10 +135,10 @@ public class CarController : UnitController
 
 			//Debug.Log ("Gas: " + gas + " - Steer: " + steer + " - Together:" + Mathf.Abs (gas * steer));
 
-			if (Mathf.Abs (gas * steer) > 1 - rain) { // Definde condition for when rain will make you slide depending on speed and steer
-				
-				InitiateLostControl ();
-			} 
+//			if (Mathf.Abs (gas * steer) > 1 - rain) { // Definde condition for when rain will make you slide depending on speed and steer
+//				
+//				InitiateLostControl ();
+//			} 
 
 
 			if (lostControl) {
@@ -189,7 +189,7 @@ public class CarController : UnitController
 		if (CurrentPiece == 0) {
 			piece = 17;
 		}
-		float fit = ((Lap - 1) * 17) + piece - WallHits * 0.5f - lostControlCounter * 0.5f;
+		float fit = ((Lap - 1) * 24) + piece - WallHits * 1f;// - lostControlCounter * 0.5f;
 		//  print(string.Format("Piece: {0}, Lap: {1}, Fitness: {2}", piece, Lap, fit));
 		if (fit > 0) {
 			return fit;
@@ -226,34 +226,34 @@ public class CarController : UnitController
 		}
 	}
 
-	void InitiateLostControl ()
-	{
-		// Loose control
-		lostControlCounter++;
-		lostControlTime = Time.time;
-		lostControlStartPos = this.transform.position;
-		Vector3 fwd = transform.TransformDirection (Vector3.forward);
-		RaycastHit hit;
-		if (Physics.Raycast (transform.position, this.transform.forward, out hit, penaltyDist)) {
-			lostControlEndPos = new Vector3 (this.transform.position.x + (this.transform.forward.x * hit.distance), this.transform.position.y, this.transform.position.z + (this.transform.forward.z * hit.distance));
-		} else {
-			lostControlEndPos = new Vector3 (this.transform.position.x + (this.transform.forward.x * penaltyDist), this.transform.position.y, this.transform.position.z + (this.transform.forward.z * penaltyDist));
-		}
-		lostControl = true;
-	}
-
-	void PerformLostControl ()
-	{
-		if ((Time.time - lostControlTime) >= penaltyTime) {
-//			Debug.Log ("Regained Control");
-			lostControl = false;
-		}
-		float lerpVal = (Time.time - lostControlTime) / penaltyTime;
-		//Debug.Log (lerpVal);
-
-		transform.position = Vector3.Lerp (lostControlStartPos, lostControlEndPos, lerpVal);
-		transform.Rotate (new Vector3 (0, oldTurnAngle, 0));
-	}
+	//	void InitiateLostControl ()
+	//	{
+	//		// Loose control
+	//		lostControlCounter++;
+	//		lostControlTime = Time.time;
+	//		lostControlStartPos = this.transform.position;
+	//		Vector3 fwd = transform.TransformDirection (Vector3.forward);
+	//		RaycastHit hit;
+	//		if (Physics.Raycast (transform.position, this.transform.forward, out hit, penaltyDist)) {
+	//			lostControlEndPos = new Vector3 (this.transform.position.x + (this.transform.forward.x * hit.distance), this.transform.position.y, this.transform.position.z + (this.transform.forward.z * hit.distance));
+	//		} else {
+	//			lostControlEndPos = new Vector3 (this.transform.position.x + (this.transform.forward.x * penaltyDist), this.transform.position.y, this.transform.position.z + (this.transform.forward.z * penaltyDist));
+	//		}
+	//		lostControl = true;
+	//	}
+	//
+	//	void PerformLostControl ()
+	//	{
+	//		if ((Time.time - lostControlTime) >= penaltyTime) {
+	////			Debug.Log ("Regained Control");
+	//			lostControl = false;
+	//		}
+	//		float lerpVal = (Time.time - lostControlTime) / penaltyTime;
+	//		//Debug.Log (lerpVal);
+	//
+	//		transform.position = Vector3.Lerp (lostControlStartPos, lostControlEndPos, lerpVal);
+	//		transform.Rotate (new Vector3 (0, oldTurnAngle, 0));
+	//	}
 
 	void OnDestroy ()
 	{

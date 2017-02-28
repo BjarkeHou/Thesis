@@ -29,20 +29,20 @@ public class Optimizer : MonoBehaviour
 	public GameObject Unit;
 	public GameObject[] trackStartPositions;
 
-	public enum Tracks
-	{
-		Track1,
-		Track2
-	}
-
-	public Tracks SelectedTrack;
-	private int trackCounter = 0;
-	public int switchTrackAfterGames = 50;
-	public int switchRainAfterGames = 200;
-	public float minRain = 0.0f;
-	public float maxRain = 0.5f;
-	public float rainInterval = 0.05f;
-	private float rain;
+	//	public enum Tracks
+	//	{
+	//		Track1,
+	//		Track2
+	//	}
+	//
+	//	public Tracks SelectedTrack;
+	//	private int trackCounter = 0;
+	//	public int switchTrackAfterGames = 50;
+	//	public int switchRainAfterGames = 200;
+	//	public float minRain = 0.0f;
+	//	public float maxRain = 0.5f;
+	//	public float rainInterval = 0.05f;
+	//	private float rain;
 		
 
 	private GameObject StartPos;
@@ -55,9 +55,9 @@ public class Optimizer : MonoBehaviour
 	private float updateInterval = 12;
 
 	private uint Generation;
-	private double Fitness;
-	private double bestFitness = 0;
-	private double MeanFitness;
+	private float Fitness;
+	private float bestFitness = 0;
+	private float MeanFitness;
 	private int bestPiece = 0;
 	private int bestCounter = 0;
 
@@ -72,14 +72,12 @@ public class Optimizer : MonoBehaviour
 
 		SetupNewExperiment ();
 
-		mapLength = (int)((maxRain - minRain) / rainInterval);
-		map = new NeatGenome[mapLength + 2];
+//		mapLength = (int)((maxRain - minRain) / rainInterval);
+		map = new NeatGenome[2];
 		loadMapElites ();
+	
 
-		rain = minRain;
-		Unit.GetComponent<CarController> ().rain = rain;
-
-		StartPos = getTrack (SelectedTrack);
+		StartPos = trackStartPositions [0];
 	}
 
 	void SetupNewExperiment ()
@@ -140,11 +138,11 @@ public class Optimizer : MonoBehaviour
 		Utility.Log (string.Format ("gen={0:N0} bestFitness={1:N6}",
 			_ea.CurrentGeneration, _ea.Statistics._maxFitness));
 		
-		Fitness = _ea.Statistics._maxFitness;
-		MeanFitness = _ea.Statistics._meanFitness;
+		Fitness = (float)_ea.Statistics._maxFitness;
+		MeanFitness = (float)_ea.Statistics._meanFitness;
 		if (bestFitness < Fitness) {
 
-			map [getIndex (rain)] = _ea.CurrentChampGenome;
+			//map [getIndex (rain)] = _ea.CurrentChampGenome;
 
 			XmlWriterSettings _xwSettings = new XmlWriterSettings ();
 			_xwSettings.Indent = true;
@@ -161,38 +159,39 @@ public class Optimizer : MonoBehaviour
 
 			bestFitness = Fitness;
 			Debug.Log ("New best saved: " + bestFitness);
+			TrialDuration = bestFitness * 10.0f;
 		}
 			
 		Generation = _ea.CurrentGeneration;
  
-		if (Generation % switchTrackAfterGames == 0 && Generation != 0 && trackStartPositions.Length > 1) {
-			trackCounter++;
-			StartPos = trackStartPositions [trackCounter];
-			if (trackCounter >= trackStartPositions.Length) {
-				trackCounter = 0;
-			}
-		}
+//		if (Generation % switchTrackAfterGames == 0 && Generation != 0 && trackStartPositions.Length > 1) {
+//			trackCounter++;
+//			StartPos = trackStartPositions [trackCounter];
+//			if (trackCounter >= trackStartPositions.Length) {
+//				trackCounter = 0;
+//			}
+//		}
 
-		if ((Generation % switchRainAfterGames == 0 || bestFitness > StoppingFitness) && Generation != 0) {
-			if (rain == maxRain) {
-				// STOP
-				StopEA ();
-			} else {
-				StopEA ();
-
-				rain += rainInterval;
-				Unit.GetComponent<CarController> ().rain = rain;
-
-				bestFitness = 0;
-
-				champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
-				popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);  		
-
-				SetupNewExperiment ();
-				StartEA ();
-
-			}
-		} 
+//		if ((Generation % switchRainAfterGames == 0 || bestFitness > StoppingFitness) && Generation != 0) {
+//			if (rain == maxRain) {
+//				// STOP
+//				StopEA ();
+//			} else {
+//				StopEA ();
+//
+//				rain += rainInterval;
+//				Unit.GetComponent<CarController> ().rain = rain;
+//
+//				bestFitness = 0;
+//
+//				champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
+//				popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);  		
+//
+//				SetupNewExperiment ();
+//				StartEA ();
+//
+//			}
+//		} 
 
 
 		//    Utility.Log(string.Format("Moving average: {0}, N: {1}", _ea.Statistics._bestFitnessMA.Mean, _ea.Statistics._bestFitnessMA.Length));
@@ -239,29 +238,12 @@ public class Optimizer : MonoBehaviour
 			}
 		}
 			
-		champFileSavePath = Application.persistentDataPath + string.Format ("/{0}/{1:0.00}.best.xml", folder_prefix, rain);
+		champFileSavePath = Application.persistentDataPath + string.Format ("/{0}/.best.xml", folder_prefix);
 		popFileSavePath = Application.persistentDataPath + string.Format ("/{0}/pop.xml", folder_prefix);       
 
 		print (champFileSavePath);
 	}
 
-
-	private int getIndex (float rain)
-	{
-		return (int)((maxRain - minRain) / rainInterval);
-	}
-
-	private GameObject getTrack (Tracks t)
-	{
-		switch (t) {
-		case Tracks.Track1:
-			return trackStartPositions [0];
-		case Tracks.Track2:
-			return trackStartPositions [1];
-			
-		}
-		return null;
-	}
 
 	void ea_PauseEvent (object sender, EventArgs e)
 	{
@@ -336,7 +318,7 @@ public class Optimizer : MonoBehaviour
 		var phenome = genomeDecoder.Decode (genome);
 
 		GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
-		obj.GetComponent<CarController> ().rain = minRain + (bestCounter * rainInterval);
+		//obj.GetComponent<CarController> ().rain = minRain + (bestCounter * rainInterval);
 		UnitController controller = obj.GetComponent<UnitController> ();
 
 		ControllerMap.Add (phenome, controller);
@@ -381,6 +363,6 @@ public class Optimizer : MonoBehaviour
 		}
 
 
-		GUI.Button (new Rect (10, Screen.height - 140, 140, 100), string.Format ("Generation: {0}\nFitness: {1:0.00}\nBestFitness: {2:0.00}\nMeanFitness: {4:0.00}\nRain: {3:0.00}", Generation, Fitness, bestFitness, rain, MeanFitness));
+		GUI.Button (new Rect (10, Screen.height - 140, 140, 100), string.Format ("Generation: {0}\nFitness: {1:0.00}\nBestFitness: {2:0.00}\nMeanFitness: {3:0.00}\n", Generation, Fitness, bestFitness, MeanFitness));
 	}
 }
