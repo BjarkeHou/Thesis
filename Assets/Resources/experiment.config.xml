@@ -2,7 +2,7 @@
 
     <Config>
       <PopulationSize>50</PopulationSize>
-      <SpecieCount>25</SpecieCount>
+      <SpecieCount>10</SpecieCount>
       <Activation>
         <Scheme>CyclicFixedIters</Scheme>
         <Iters>1</Iters>

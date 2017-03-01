@@ -5,7 +5,7 @@ using SharpNeat.Phenomes;
 
 public class ForceController : UnitController
 {
-
+	public bool allKnown = false;
 	public float thrust;
 	public float rotationSpeed;
 	private Rigidbody rb;
@@ -13,6 +13,11 @@ public class ForceController : UnitController
 	private int maxRoadPieces = 24;
 
 	public float WallPunishment = 1.0f;
+
+
+	public float steer;
+	public float gas;
+
 
 	public int Lap = 1;
 	public bool passedWaypoint = false;
@@ -31,6 +36,9 @@ public class ForceController : UnitController
 	void Start ()
 	{
 		rb = GetComponent<Rigidbody> ();
+		if (allKnown) {
+			rb.drag = (Random.Range (1, 11) / 10.0f);
+		}
 	}
 	
 	// Update is called once per frame
@@ -67,20 +75,25 @@ public class ForceController : UnitController
 		rightFrontSensor = getSensor (new Vector3 (0.5f, 0, 1).normalized);
 		rightSensor = getSensor (new Vector3 (1, 0, 0).normalized);
 
+		//print (leftSensor + "\t" + leftFrontSensor + "\t" + frontSensor + "\t" + rightFrontSensor + "\t" + rightSensor);
+
 		ISignalArray inputArr = box.InputSignalArray;
 		inputArr [0] = frontSensor;
 		inputArr [1] = leftFrontSensor;
 		inputArr [2] = leftSensor;
 		inputArr [3] = rightFrontSensor;
 		inputArr [4] = rightSensor;
+		if (allKnown)
+			inputArr [5] = rb.drag;
 
 		box.Activate ();
 
 		ISignalArray outputArr = box.OutputSignalArray;
 
-		var steer = (float)outputArr [0] * 2 - 1;
-		var gas = (float)outputArr [1] * 2 - 1;
-
+		steer = (float)outputArr [0] * 2 - 1;
+		gas = (float)outputArr [1] * 2 - 1;
+//		if (steer < 0 && gas > 0)
+//			print (steer + " - " + gas);
 		transform.Rotate (0, (steer * rotationSpeed), 0);
 		rb.AddForce (Vector3.Normalize (transform.forward) * thrust * gas);
 
@@ -91,7 +104,8 @@ public class ForceController : UnitController
 	private float getSensor (Vector3 direction)
 	{
 		RaycastHit hit;
-		if (Physics.Raycast (transform.position + transform.forward * 1.1f, transform.TransformDirection (new Vector3 (-1, 0, 0).normalized), out hit, SensorRange)) {
+		//Debug.DrawRay (transform.position + transform.forward * 1.1f, transform.TransformDirection (direction.normalized));
+		if (Physics.Raycast (transform.position + transform.forward * 1.1f, transform.TransformDirection (direction.normalized), out hit, SensorRange)) {
 			if (hit.collider.tag.Equals ("Wall")) {
 				return (1 - hit.distance / SensorRange);
 			}
@@ -129,8 +143,8 @@ public class ForceController : UnitController
 			piece = maxRoadPieces;
 		}
 		float fit = ((Lap - 1) * maxRoadPieces) + (piece) - (WallHits * WallPunishment);// - lostControlCounter * 0.5f;
-		if (WallHits < 2)
-			fit = fit + fit;
+//		if (WallHits < piece)
+//			fit = fit + fit;
 		//  print(string.Format("Piece: {0}, Lap: {1}, Fitness: {2}", piece, Lap, fit));
 		if (fit > 0) {
 			return fit;

@@ -11,8 +11,10 @@ using System.IO;
 public class Optimizer : MonoBehaviour
 {
 
-	const int NUM_INPUTS = 5;
-	const int NUM_OUTPUTS = 2;
+	public bool allKnown = false;
+
+	int NUM_INPUTS = 5;
+	int NUM_OUTPUTS = 2;
 
 	public int Trials;
 	public float TrialDuration;
@@ -69,11 +71,19 @@ public class Optimizer : MonoBehaviour
 	{
 		Utility.DebugLog = true;
 
+		if (allKnown) {
+			NUM_INPUTS = 6;
+		} else {
+			Trials = 1;
+		}
+
+
+
 
 		SetupNewExperiment ();
 
 //		mapLength = (int)((maxRain - minRain) / rainInterval);
-		map = new NeatGenome[2];
+		map = new NeatGenome[1];
 		loadMapElites ();
 	
 
@@ -159,7 +169,9 @@ public class Optimizer : MonoBehaviour
 
 			bestFitness = Fitness;
 			Debug.Log ("New best saved: " + bestFitness);
-			TrialDuration = bestFitness * 10.0f;
+			TrialDuration = bestFitness * 50.0f > 70.0f ? bestFitness * 50.0f : 70.0f;
+			if (TrialDuration > 1250.0f)
+				TrialDuration = 1250.0f;
 		}
 			
 		Generation = _ea.CurrentGeneration;
@@ -238,7 +250,7 @@ public class Optimizer : MonoBehaviour
 			}
 		}
 			
-		champFileSavePath = Application.persistentDataPath + string.Format ("/{0}/.best.xml", folder_prefix);
+		champFileSavePath = Application.persistentDataPath + string.Format ("/{0}/best.xml", folder_prefix);
 		popFileSavePath = Application.persistentDataPath + string.Format ("/{0}/pop.xml", folder_prefix);       
 
 		print (champFileSavePath);
