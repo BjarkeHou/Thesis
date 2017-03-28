@@ -295,8 +295,12 @@ public class Optimizer : MonoBehaviour
 
 		_ea.UpdateEvent += new EventHandler (ea_UpdateEventMAP);
 		_ea.PausedEvent += new EventHandler (ea_PauseEvent);
+		IList<NeatGenome> unTestedGenomes = null;
 
-		IList<NeatGenome> unTestedGenomes = _ea.GenomeList;
+		if (map.Values.Count == 0)
+			unTestedGenomes = _ea.GenomeList;
+		else
+			unTestedGenomes = new List<NeatGenome> (map.Values);
 
 		//Loop this:
 		//		while (firstRun) {
@@ -318,31 +322,31 @@ public class Optimizer : MonoBehaviour
 		_ea.GenomeList = children;
 		_ea.StartContinueMAP2 ();
 
-		IList<NeatGenome> testedGenomes = _ea.GenomeList;
-		print ("TestedGenomes = " + testedGenomes.Count);
-
-		foreach (NeatGenome genome in testedGenomes) {
-			int key = convertAvgSpeedToKey (genome.EvaluationInfo.AvgSpeed);
-			if (key == -1)
-				continue;
-			if (map.ContainsKey (key)) {
-				if (map [key] != null) {
-					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
-						map [key] = genome;
-					}
-				} else {
-					map [key] = genome;
-				}
-			} else {
-				map.Add (key, genome);
-			}
-		}
-		foreach (KeyValuePair<int,NeatGenome> value in map) {
-			//Now you can access the key and value both separately from this attachStat as:
-			Debug.Log ("Key: " + value.Key);
-			Debug.Log ("Fitness: " + value.Value.EvaluationInfo.Fitness);
-		}
-		//		}
+//		IList<NeatGenome> testedGenomes = _ea.GenomeList;
+//		print ("TestedGenomes = " + testedGenomes.Count);
+//
+//		foreach (NeatGenome genome in testedGenomes) {
+//			int key = convertAvgSpeedToKey (genome.EvaluationInfo.AvgSpeed);
+//			if (key == -1)
+//				continue;
+//			if (map.ContainsKey (key)) {
+//				if (map [key] != null) {
+//					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
+//						map [key] = genome;
+//					}
+//				} else {
+//					map [key] = genome;
+//				}
+//			} else {
+//				map.Add (key, genome);
+//			}
+//		}
+//		foreach (KeyValuePair<int,NeatGenome> value in map) {
+//			//Now you can access the key and value both separately from this attachStat as:
+//			Debug.Log ("Key: " + value.Key);
+//			Debug.Log ("Fitness: " + value.Value.EvaluationInfo.Fitness);
+//		}
+//		//		}
 	}
 
 
@@ -466,6 +470,7 @@ public class Optimizer : MonoBehaviour
 				}
 			} else {
 				map.Add (key, genome);
+				SaveGenome (genome, key.ToString ());
 			}
 		}
 		Debug.Log ("Map size: " + map.Values.Count);
@@ -474,7 +479,7 @@ public class Optimizer : MonoBehaviour
 			Debug.Log ("Key: " + value.Key + " - Fitness: " + value.Value.EvaluationInfo.Fitness);
 		}
 
-		IList<NeatGenome> unTestedGenomes = _ea.GenomeList;
+		IList<NeatGenome> unTestedGenomes = new List<NeatGenome> (map.Values);
 
 		//Loop this:
 		//		while (firstRun) {
