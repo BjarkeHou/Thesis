@@ -187,91 +187,91 @@ public class Optimizer : MonoBehaviour
 		loadMap ();
 	}
 
-	public IEnumerator StartMAP ()
-	{
-		if (carKnowsDrag) {
-			NUM_INPUTS = 6;
-		} 
-		if (!randomDrag) {
-			Trials = 1;
-		}
-
-		mapRunning = true;
-
-		//TODO SetupNewExperiment skal fixes til MAP Elites
-		SetupNewMAPExperiment ();
-
-		//		mapLength = (int)((maxRain - minRain) / rainInterval);
-		map = new Dictionary<int, NeatGenome> ();//NeatGenome[10];
-
-
-
-		// print("Loading: " + popFileLoadPath);
-		_ea = experiment.CreateEvolutionAlgorithm (popFileSavePath);
-		startTime = DateTime.Now;
-
-		_ea.UpdateEvent += new EventHandler (ea_UpdateEvent);
-		_ea.PausedEvent += new EventHandler (ea_PauseEvent);
-
-		IList<NeatGenome> unTestedGenomes = _ea.GenomeList;
-		bool firstRun = true;
-
-		//Loop this:
-//		while (firstRun) {
-		List<NeatGenome> children = new List<NeatGenome> ();
-		if (firstRun) {
-			for (int i = 0; i < 1; i++) {
-				NeatGenome mom = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-				NeatGenome dad = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-				NeatGenome child = mom.CreateOffspring (dad, _ea.CurrentGeneration);
-				children.Add (child);
-			}
-			firstRun = false;
-		} else {
-				
-//				for (int i = 0; i < 10; i++) {
-//					
-//					NeatGenome mom = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-//					NeatGenome dad = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-//					NeatGenome child = mom.CreateOffspring (dad, _ea.CurrentGeneration);
-//					children.Add (child);
-//				}
-		}
-		//Get 2 random genomes
-
-
-		// Create offspring like this
-		// (Maybe do this with a lot of genomes at once, for optimization)
-
-		print ("Test length: " + children.Count);
-		yield return StartCoroutine (_ea.EvaluateList (children));
-
-		IList<NeatGenome> testedGenomes = _ea.GenomeList;
-		print ("TestedGenomes = " + testedGenomes.Count);
-
-		foreach (NeatGenome genome in testedGenomes) {
-			int key = convertAvgSpeedToKey (genome.EvaluationInfo.AvgSpeed);
-			if (key == -1)
-				continue;
-			if (map.ContainsKey (key)) {
-				if (map [key] != null) {
-					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
-						map [key] = genome;
-					}
-				} else {
-					map [key] = genome;
-				}
-			} else {
-				map.Add (key, genome);
-			}
-		}
-		foreach (KeyValuePair<int,NeatGenome> value in map) {
-			//Now you can access the key and value both separately from this attachStat as:
-			Debug.Log ("Key: " + value.Key);
-			Debug.Log ("Fitness: " + value.Value.EvaluationInfo.Fitness);
-		}
-//		}
-	}
+	//	public IEnumerator StartMAP ()
+	//	{
+	//		if (carKnowsDrag) {
+	//			NUM_INPUTS = 6;
+	//		}
+	//		if (!randomDrag) {
+	//			Trials = 1;
+	//		}
+	//
+	//		mapRunning = true;
+	//
+	//		//TODO SetupNewExperiment skal fixes til MAP Elites
+	//		SetupNewMAPExperiment ();
+	//
+	//		//		mapLength = (int)((maxRain - minRain) / rainInterval);
+	//		map = new Dictionary<int, NeatGenome> ();//NeatGenome[10];
+	//
+	//
+	//
+	//		// print("Loading: " + popFileLoadPath);
+	//		_ea = experiment.CreateEvolutionAlgorithm (popFileSavePath);
+	//		startTime = DateTime.Now;
+	//
+	//		_ea.UpdateEvent += new EventHandler (ea_UpdateEvent);
+	//		_ea.PausedEvent += new EventHandler (ea_PauseEvent);
+	//
+	//		IList<NeatGenome> unTestedGenomes = _ea.GenomeList;
+	//		bool firstRun = true;
+	//
+	//		//Loop this:
+	////		while (firstRun) {
+	//		List<NeatGenome> children = new List<NeatGenome> ();
+	//		if (firstRun) {
+	//			for (int i = 0; i < 1; i++) {
+	//				NeatGenome mom = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
+	//				NeatGenome dad = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
+	//				NeatGenome child = mom.CreateOffspring (dad, _ea.CurrentGeneration);
+	//				children.Add (child);
+	//			}
+	//			firstRun = false;
+	//		} else {
+	//				
+	////				for (int i = 0; i < 10; i++) {
+	////					
+	////					NeatGenome mom = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
+	////					NeatGenome dad = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
+	////					NeatGenome child = mom.CreateOffspring (dad, _ea.CurrentGeneration);
+	////					children.Add (child);
+	////				}
+	//		}
+	//		//Get 2 random genomes
+	//
+	//
+	//		// Create offspring like this
+	//		// (Maybe do this with a lot of genomes at once, for optimization)
+	//
+	//		print ("Test length: " + children.Count);
+	//		yield return StartCoroutine (_ea.EvaluateList (children));
+	//
+	//		IList<NeatGenome> testedGenomes = _ea.GenomeList;
+	//		print ("TestedGenomes = " + testedGenomes.Count);
+	//
+	//		foreach (NeatGenome genome in testedGenomes) {
+	//			int key = convertAvgSpeedToKey (genome.EvaluationInfo.AvgSpeed);
+	//			if (key == -1)
+	//				continue;
+	//			if (map.ContainsKey (key)) {
+	//				if (map [key] != null) {
+	//					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
+	//						map [key] = genome;
+	//					}
+	//				} else {
+	//					map [key] = genome;
+	//				}
+	//			} else {
+	//				map.Add (key, genome);
+	//			}
+	//		}
+	//		foreach (KeyValuePair<int,NeatGenome> value in map) {
+	//			//Now you can access the key and value both separately from this attachStat as:
+	//			Debug.Log ("Key: " + value.Key);
+	//			Debug.Log ("Fitness: " + value.Value.EvaluationInfo.Fitness);
+	//		}
+	////		}
+	//	}
 
 	public void StartMAP2 ()
 	{
@@ -456,22 +456,26 @@ public class Optimizer : MonoBehaviour
 			int key = convertAvgSpeedToKey (genome.EvaluationInfo.AvgSpeed);
 			if (key == -1)
 				continue;
-			if (map.ContainsKey (key)) {
-				if (map [key] != null) {
-					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
-						map [key] = genome;
-						SaveGenome (genome, key.ToString ());
-						Debug.Log ("NEW BEST GENOME SAVED AT " + key);
-					}
-				} else {
-					map [key] = genome;
-					SaveGenome (genome, key.ToString ());
-					Debug.Log ("NEW SPOT IN MAP SAVED AT " + key);
-				}
-			} else {
+//			if (map.ContainsKey (key)) {
+//				if (map [key] != null) {
+			if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
+				Debug.Log ("NEW SAVED: " + key + " FITNESS: " + genome.EvaluationInfo.Fitness + " OLD: " + map [key].EvaluationInfo.Fitness);
+				map.Remove (key);
 				map.Add (key, genome);
 				SaveGenome (genome, key.ToString ());
 			}
+//				} else {
+//					map [key] = genome;
+//					SaveGenome (genome, key.ToString ());
+//					Debug.Log ("NEW SPOT IN MAP SAVED AT " + key);
+//				}
+//			} else {
+//				if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
+//					map.Add (key, genome);
+//					SaveGenome (genome, key.ToString ());
+//					Debug.Log ("NEW SAVED: " + key + " FITNESS: " + map [key].EvaluationInfo.Fitness + " OLD: " + genome.EvaluationInfo.Fitness);
+//				}
+//			}
 		}
 		Debug.Log ("Map size: " + map.Values.Count);
 		foreach (KeyValuePair<int,NeatGenome> value in map) {
@@ -479,7 +483,7 @@ public class Optimizer : MonoBehaviour
 			Debug.Log ("Key: " + value.Key + " - Fitness: " + value.Value.EvaluationInfo.Fitness);
 		}
 
-		IList<NeatGenome> unTestedGenomes = new List<NeatGenome> (map.Values);
+		IList<NeatGenome> unTestedGenomes = new List<NeatGenome> (map.Values); 
 
 		//Loop this:
 		//		while (firstRun) {
