@@ -5,7 +5,9 @@ using SharpNeat.Phenomes;
 
 public class ForceController : UnitController
 {
-	public bool allKnown = false;
+	public bool randomDrag = false;
+	public bool knowsDrag = false;
+	public bool manuel = false;
 	public float thrust;
 	public float rotationSpeed;
 	private Rigidbody rb;
@@ -14,10 +16,8 @@ public class ForceController : UnitController
 
 	public float WallPunishment = 1.0f;
 
-
 	public float steer;
 	public float gas;
-
 
 	public int Lap = 1;
 	public bool passedWaypoint = false;
@@ -25,8 +25,11 @@ public class ForceController : UnitController
 	bool MovingForward = true;
 	bool IsRunning;
 
-	float averageVelocity = 0;
-	int velocityCounter = 0;
+	float distanceTraveled = 0.0f;
+	float timeExisted = 0.0f;
+	Vector3 lastPosition;
+	//	float averageVelocity = 0;
+	//	int velocityCounter = 0;
 
 	public float SensorRange = 10;
 	int WallHits;
@@ -36,69 +39,82 @@ public class ForceController : UnitController
 	void Start ()
 	{
 		rb = GetComponent<Rigidbody> ();
-		if (allKnown) {
-			rb.drag = (Random.Range (1, 11) / 10.0f);
+		if (randomDrag) {
+			rb.drag = (Random.Range (3, 11) / 10.0f);
 		}
+		lastPosition = this.transform.position;
 	}
 	
 	// Update is called once per frame
 	void FixedUpdate ()
 	{
-		if (!IsRunning) {
-			return;
-		}
 
-//		if (Input.GetKey (KeyCode.J) && !Input.GetKey (KeyCode.L)) {
-//			transform.Rotate (0, -rotationSpeed, 0);
-//			//rb.AddForce (Vector3.Normalize (-transform.right + transform.forward) * thrust);
-//		} else if (!Input.GetKey (KeyCode.J) && Input.GetKey (KeyCode.L)) {
-//			//rb.AddForce (Vector3.Normalize (transform.right + transform.forward) * thrust);
-//			transform.Rotate (0, rotationSpeed, 0);
-//		} 	
-//
-//		if (Input.GetKey (KeyCode.Space))
-//			rb.AddForce (Vector3.Normalize (transform.forward) * thrust);
-//		else if (Input.GetKey (KeyCode.K))
-//			rb.AddForce (Vector3.Normalize (-transform.forward) * 2 * thrust);
+		if (manuel) {
+			if (Input.GetKey (KeyCode.J) && !Input.GetKey (KeyCode.L)) {
+				transform.Rotate (0, -rotationSpeed, 0);
+				//rb.AddForce (Vector3.Normalize (-transform.right + transform.forward) * thrust);
+			} else if (!Input.GetKey (KeyCode.J) && Input.GetKey (KeyCode.L)) {
+				//rb.AddForce (Vector3.Normalize (transform.right + transform.forward) * thrust);
+				transform.Rotate (0, rotationSpeed, 0);
+			} 	
 
-		float frontSensor = 0;
-		float leftFrontSensor = 0;
-		float leftSensor = 0;
-		float rightFrontSensor = 0;
-		float rightSensor = 0;
+			if (Input.GetKey (KeyCode.Space))
+				rb.AddForce (Vector3.Normalize (transform.forward) * thrust);
+			else if (Input.GetKey (KeyCode.K))
+				rb.AddForce (Vector3.Normalize (-transform.forward) * 2 * thrust);
+		} else {
+			if (!IsRunning) {
+				return;
+			}
 
-		// Front sensor
+			float frontSensor = 0;
+			float leftFrontSensor = 0;
+			float leftSensor = 0;
+			float rightFrontSensor = 0;
+			float rightSensor = 0;
 
-		frontSensor = getSensor (new Vector3 (0, 0, 1).normalized);
-		leftFrontSensor = getSensor (new Vector3 (-0.5f, 0, 1).normalized);
-		leftSensor = getSensor (new Vector3 (-1, 0, 0).normalized);
-		rightFrontSensor = getSensor (new Vector3 (0.5f, 0, 1).normalized);
-		rightSensor = getSensor (new Vector3 (1, 0, 0).normalized);
+			// Front sensor
 
-		//print (leftSensor + "\t" + leftFrontSensor + "\t" + frontSensor + "\t" + rightFrontSensor + "\t" + rightSensor);
+			frontSensor = getSensor (new Vector3 (0, 0, 1).normalized);
+			leftFrontSensor = getSensor (new Vector3 (-0.5f, 0, 1).normalized);
+			leftSensor = getSensor (new Vector3 (-1, 0, 0).normalized);
+			rightFrontSensor = getSensor (new Vector3 (0.5f, 0, 1).normalized);
+			rightSensor = getSensor (new Vector3 (1, 0, 0).normalized);
 
-		ISignalArray inputArr = box.InputSignalArray;
-		inputArr [0] = frontSensor;
-		inputArr [1] = leftFrontSensor;
-		inputArr [2] = leftSensor;
-		inputArr [3] = rightFrontSensor;
-		inputArr [4] = rightSensor;
-		if (allKnown)
-			inputArr [5] = rb.drag;
+			//print (leftSensor + "\t" + leftFrontSensor + "\t" + frontSensor + "\t" + rightFrontSensor + "\t" + rightSensor);
 
-		box.Activate ();
+			ISignalArray inputArr = box.InputSignalArray;
+			inputArr [0] = frontSensor;
+			inputArr [1] = leftFrontSensor;
+			inputArr [2] = leftSensor;
+			inputArr [3] = rightFrontSensor;
+			inputArr [4] = rightSensor;
+			if (knowsDrag)
+				inputArr [5] = rb.drag;
 
-		ISignalArray outputArr = box.OutputSignalArray;
+			box.Activate ();
 
-		steer = (float)outputArr [0] * 2 - 1;
-		gas = (float)outputArr [1] * 2 - 1;
+			ISignalArray outputArr = box.OutputSignalArray;
+
+			steer = (float)outputArr [0] * 2 - 1;
+			gas = (float)outputArr [1] * 2 - 1;
 //		if (steer < 0 && gas > 0)
 //			print (steer + " - " + gas);
-		transform.Rotate (0, (steer * rotationSpeed), 0);
-		rb.AddForce (Vector3.Normalize (transform.forward) * thrust * gas);
+			transform.Rotate (0, (steer * rotationSpeed), 0);
+			rb.AddForce (Vector3.Normalize (transform.forward) * thrust * gas);
 
-		averageVelocity += rb.velocity.magnitude;
-		velocityCounter++;
+			// Calculate Speed
+			distanceTraveled += Vector3.Distance (lastPosition, this.transform.position);
+			lastPosition = this.transform.position;
+			timeExisted += Time.fixedDeltaTime;
+//			averageVelocity += rb.velocity.magnitude;
+//			velocityCounter++;
+		}
+	}
+
+	public override float GetAvgSpeed ()
+	{
+		return distanceTraveled / timeExisted;
 	}
 
 	private float getSensor (Vector3 direction)
@@ -188,10 +204,11 @@ public class ForceController : UnitController
 
 	void OnDestroy ()
 	{
-		if (GetHighestPiece () > 6) {
-			//print (GetHighestPiece () + " - " + Lap + " - " + WallHits);
-			print ("Average Speed: " + (averageVelocity / velocityCounter));
-		}
+//		if (GetHighestPiece ()) {
+		//print (GetHighestPiece () + " - " + Lap + " - " + WallHits);
+//			print ("Average Speed: " + (averageVelocity / velocityCounter));
+//		print ("Average Speed: " + GetAvgSpeed ());
+//		}
 			
 
 	}

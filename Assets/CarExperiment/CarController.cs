@@ -197,6 +197,11 @@ public class CarController : UnitController
 		return 0;
 	}
 
+	public override float GetAvgSpeed ()
+	{
+		return 0;
+	}
+
 	public int GetHighestPiece ()
 	{
 		return (Lap - 1) * 17 + CurrentPiece;

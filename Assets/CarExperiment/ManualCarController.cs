@@ -67,7 +67,6 @@ public class ManualCarController : MonoBehaviour
 		// Loose control
 		lostControlTime = Time.time;
 		lostControlStartPos = this.transform.position;
-		Vector3 fwd = transform.TransformDirection (Vector3.forward);
 		RaycastHit hit;
 		if (Physics.Raycast (transform.position, this.transform.forward, out hit, penaltyDist)) {
 			lostControlEndPos = new Vector3 (this.transform.position.x + (this.transform.forward.x * hit.distance), this.transform.position.y, this.transform.position.z + (this.transform.forward.z * hit.distance));

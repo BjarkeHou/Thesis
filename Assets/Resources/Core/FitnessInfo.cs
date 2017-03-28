@@ -19,43 +19,47 @@
 
 namespace SharpNeat.Core
 {
-    /// <summary>
-    /// Wrapper struct for fitness values.
-    /// </summary>
-    public struct FitnessInfo
-    {
-        /// <summary>
-        /// Precosntructed FitnessInfo for commen case of representing zero fitness.
-        /// </summary>
-        public static FitnessInfo Zero = new FitnessInfo(0.0, 0.0);
+	/// <summary>
+	/// Wrapper struct for fitness values.
+	/// </summary>
+	public struct FitnessInfo
+	{
+		/// <summary>
+		/// Precosntructed FitnessInfo for commen case of representing zero fitness.
+		/// </summary>
+		public static FitnessInfo Zero = new FitnessInfo (0.0, 0.0);
 
-        /// <summary>
-        /// Fitness score.
-        /// </summary>
-        public double _fitness;
+		/// <summary>
+		/// Fitness score.
+		/// </summary>
+		public double _fitness;
 
-        /// <summary>
-        /// Auxiliary fitness info, i.e. for evaluation metrics other than the
-        /// primary fitness metric but that nonetheless we are interested in observing.
-        /// </summary>
-        public AuxFitnessInfo[] _auxFitnessArr;
+		public double _avgSpeed;
 
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public FitnessInfo(double fitness, double alternativeFitness)
-        {
-            _fitness = fitness;
-            _auxFitnessArr = new AuxFitnessInfo[] {new AuxFitnessInfo("Alternative Fitness", alternativeFitness)};
-        }
+		/// <summary>
+		/// Auxiliary fitness info, i.e. for evaluation metrics other than the
+		/// primary fitness metric but that nonetheless we are interested in observing.
+		/// </summary>
+		public AuxFitnessInfo[] _auxFitnessArr;
 
-        /// <summary>
-        /// Construct with the provided fitness value and auxiliary fitness info.
-        /// </summary>
-        public FitnessInfo(double fitness, AuxFitnessInfo[] auxFitnessArr)
-        {
-            _fitness = fitness;
-            _auxFitnessArr = auxFitnessArr;
-        }
-    }
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public FitnessInfo (double fitness, double alternativeFitness, double avgSpeed = -1)
+		{
+			_fitness = fitness;
+			_auxFitnessArr = new AuxFitnessInfo[] { new AuxFitnessInfo ("Alternative Fitness", alternativeFitness) };
+			_avgSpeed = avgSpeed;
+		}
+
+		/// <summary>
+		/// Construct with the provided fitness value and auxiliary fitness info.
+		/// </summary>
+		public FitnessInfo (double fitness, AuxFitnessInfo[] auxFitnessArr, double avgSpeed = -1)
+		{
+			_fitness = fitness;
+			_auxFitnessArr = auxFitnessArr;
+			_avgSpeed = avgSpeed;
+		}
+	}
 }
