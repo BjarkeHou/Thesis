@@ -430,7 +430,7 @@ public class Optimizer : MonoBehaviour
 		XmlWriterSettings _xwSettings = new XmlWriterSettings ();
 		_xwSettings.Indent = true;
 
-		string path = Application.persistentDataPath + string.Format ("/{0}/map/", folder_prefix);
+		string path = Application.persistentDataPath + string.Format ("/{0}/map/{1}/", folder_prefix, Generation);
 		// Save genomes to xml file.        
 		DirectoryInfo dirInf = new DirectoryInfo (path);
 		if (!dirInf.Exists) {
@@ -449,6 +449,8 @@ public class Optimizer : MonoBehaviour
 		Utility.Log (string.Format ("gen={0:N0} bestFitness={1:N6}",
 			_ea.CurrentGeneration, _ea.Statistics._maxFitness));
 
+		Generation = _ea.CurrentGeneration;
+
 		IList<NeatGenome> testedGenomes = _ea.GenomeList;
 		print ("TestedGenomes = " + testedGenomes.Count);
 
@@ -459,18 +461,20 @@ public class Optimizer : MonoBehaviour
 			if (map.ContainsKey (key)) {
 				if (map [key] != null) {
 					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
+						Debug.Log ("New Best! Key: " + key + " Old: " + map [key].EvaluationInfo.Fitness + " New: " + genome.EvaluationInfo.Fitness);
 						map [key] = genome;
 						SaveGenome (genome, key.ToString ());
-						Debug.Log ("NEW BEST GENOME SAVED AT " + key);
+
 					}
 				} else {
 					map [key] = genome;
 					SaveGenome (genome, key.ToString ());
-					Debug.Log ("NEW SPOT IN MAP SAVED AT " + key);
+					Debug.Log ("New Added! Key: " + key + " New: " + genome.EvaluationInfo.Fitness);
 				}
 			} else {
 				map.Add (key, genome);
 				SaveGenome (genome, key.ToString ());
+				Debug.Log ("New Added! Key: " + key + " New: " + genome.EvaluationInfo.Fitness);
 			}
 		}
 		Debug.Log ("Map size: " + map.Values.Count);
@@ -520,7 +524,7 @@ public class Optimizer : MonoBehaviour
 				TrialDuration = 450.0f;
 		}
 
-		Generation = _ea.CurrentGeneration;
+
 		ChampAvgSpeed = _ea.CurrentChampGenome.EvaluationInfo.AvgSpeed;
 
 

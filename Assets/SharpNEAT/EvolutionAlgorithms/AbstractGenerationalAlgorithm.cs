@@ -331,7 +331,7 @@ namespace SharpNeat.EvolutionAlgorithms
 				//  print("currentGeneration: " + _currentGeneration);
 				yield return Coroutiner.StartCoroutine (PerformOneGeneration ());
 				//     print("Performed one generation");
-				OnUpdateEvent ();
+//				OnUpdateEvent ();
 				if (UpdateTest ()) {
 					_prevUpdateGeneration = _currentGeneration;
 					_prevUpdateTimeTick = DateTime.Now.Ticks;
