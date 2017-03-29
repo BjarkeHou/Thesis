@@ -75,8 +75,8 @@ namespace SharpNeat.EvolutionAlgorithms
 		/// Constructs with the provided NeatEvolutionAlgorithmParameters and ISpeciationStrategy.
 		/// </summary>
 		public MAPElitesEvolutionAlgorithm (NeatEvolutionAlgorithmParameters eaParams,
-		                                   ISpeciationStrategy<TGenome> speciationStrategy,
-		                                   IComplexityRegulationStrategy complexityRegulationStrategy)
+		                                    ISpeciationStrategy<TGenome> speciationStrategy,
+		                                    IComplexityRegulationStrategy complexityRegulationStrategy)
 		{
 			_eaParams = eaParams;
 			_eaParamsComplexifying = _eaParams;
@@ -134,8 +134,8 @@ namespace SharpNeat.EvolutionAlgorithms
 		/// <param name="genomeFactory">The factory that was used to create the genomeList and which is therefore referenced by the genomes.</param>
 		/// <param name="genomeList">An initial genome population.</param>
 		public override void Initialize (IGenomeListEvaluator<TGenome> genomeListEvaluator,
-		                                      IGenomeFactory<TGenome> genomeFactory,
-		                                      List<TGenome> genomeList)
+		                                 IGenomeFactory<TGenome> genomeFactory,
+		                                 List<TGenome> genomeList)
 		{
 			base.Initialize (genomeListEvaluator, genomeFactory, genomeList);
 			Initialize ();
@@ -149,8 +149,8 @@ namespace SharpNeat.EvolutionAlgorithms
 		/// <param name="genomeFactory">The factory that was used to create the genomeList and which is therefore referenced by the genomes.</param>
 		/// <param name="populationSize">The number of genomes to create for the initial population.</param>
 		public override void Initialize (IGenomeListEvaluator<TGenome> genomeListEvaluator,
-		                                      IGenomeFactory<TGenome> genomeFactory,
-		                                      int populationSize)
+		                                 IGenomeFactory<TGenome> genomeFactory,
+		                                 int populationSize)
 		{
 			base.Initialize (genomeListEvaluator, genomeFactory, populationSize);
 			Initialize ();
@@ -178,6 +178,11 @@ namespace SharpNeat.EvolutionAlgorithms
 		#endregion
 
 		#region Evolution Algorithm Main Method [PerformOneGeneration]
+
+		protected override IEnumerator PerformOneGenerationMAP ()
+		{
+			return null;
+		}
 
 		/// <summary>
 		/// Progress forward by one generation. Perform one generation/iteration of the evolution algorithm.
@@ -531,7 +536,7 @@ namespace SharpNeat.EvolutionAlgorithms
 				// for 0 the  species all get an even chance of selection, and for >1 we can just select species normally.
 				int crossSpecieMatings = nonZeroSpecieCount == 1 ? 0 :
                                             (int)Utilities.ProbabilisticRound (_eaParams.InterspeciesMatingProportion
-				                                     * inst._offspringSexualCount, _rng);
+				                         * inst._offspringSexualCount, _rng);
 				_stats._sexualOffspringCount += (ulong)(inst._offspringSexualCount - crossSpecieMatings);
 				_stats._interspeciesOffspringCount += (ulong)crossSpecieMatings;
 
@@ -587,10 +592,10 @@ namespace SharpNeat.EvolutionAlgorithms
 		/// <param name="currentSpecieIdx">Current specie's index in _specieList</param>
 		/// <param name="genomeList">Current specie's genome list.</param>
 		private TGenome CreateOffspring_CrossSpecieMating (RouletteWheelLayout rwl,
-		                                                        RouletteWheelLayout[] rwlArr,
-		                                                        RouletteWheelLayout rwlSpecies,
-		                                                        int currentSpecieIdx,
-		                                                        IList<TGenome> genomeList)
+		                                                   RouletteWheelLayout[] rwlArr,
+		                                                   RouletteWheelLayout rwlSpecies,
+		                                                   int currentSpecieIdx,
+		                                                   IList<TGenome> genomeList)
 		{
 			// Select parent from current specie.
 			int parent1Idx = RouletteWheel.SingleThrow (rwl, _rng);
