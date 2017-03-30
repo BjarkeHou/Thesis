@@ -329,7 +329,7 @@ namespace SharpNeat.EvolutionAlgorithms
 			for (; ;) {
 				_currentGeneration++;
 				//  print("currentGeneration: " + _currentGeneration);
-				yield return Coroutiner.StartCoroutine (PerformOneGenerationMAP ());
+				yield return Coroutiner.StartCoroutine (PerformOneGeneration ());
 				//     print("Performed one generation");
 //				OnUpdateEvent ();
 				if (UpdateTest ()) {

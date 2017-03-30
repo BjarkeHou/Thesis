@@ -24,7 +24,7 @@ public class Optimizer : MonoBehaviour
 	public int evoSpeed = 20;
 	public string folder_prefix = "test_1";
 	bool EARunning;
-	bool mapRunning;
+
 	string popFileSavePath, champFileSavePath;
 
 	SimpleExperiment experiment;
@@ -33,21 +33,17 @@ public class Optimizer : MonoBehaviour
 	public GameObject Unit;
 	public GameObject[] trackStartPositions;
 
-	//	public enum Tracks
-	//	{
-	//		Track1,
-	//		Track2
-	//	}
-	//
-	//	public Tracks SelectedTrack;
-	//	private int trackCounter = 0;
-	//	public int switchTrackAfterGames = 50;
-	//	public int switchRainAfterGames = 200;
-	//	public float minRain = 0.0f;
-	//	public float maxRain = 0.5f;
-	//	public float rainInterval = 0.05f;
-	//	private float rain;
-		
+	// Running map
+	bool mapRunning;
+	List<GameObject> runningCars;
+	float stopwatch = 0.0f;
+	int bestKeyInMap = -1;
+	float bestFitnessInMap = -1.0f;
+	int maxKey;
+	int minKey;
+	float highTesting = 0.75f;
+	float lowTesting = 0.25f;
+	bool searching = true;
 
 	private GameObject StartPos;
 
@@ -60,7 +56,7 @@ public class Optimizer : MonoBehaviour
 
 	private uint Generation;
 	private float Fitness;
-	private float bestFitness = 0;
+	private float bestFitness = 0.0f;
 	private float MeanFitness;
 	private float ChampAvgSpeed;
 	private int bestPiece = 0;
@@ -96,14 +92,72 @@ public class Optimizer : MonoBehaviour
 	void Update ()
 	{
 		
-		Time.timeScale = evoSpeed;       
+		CheckFPS ();       
 
+		if (mapRunning) {
+			stopwatch += Time.deltaTime;
+
+			if (stopwatch > TrialDuration && searching) {
+				stopwatch = 0.0f;
+				if (runningCars.Count == 3) {
+					bestFitnessInMap = runningCars [0].GetComponent<UnitController> ().GetFitness ();
+					bestKeyInMap = ConvertPercentageToKey (0.5f);
+					Destroy (runningCars [0]);
+					runningCars.RemoveAt (0);
+				}
+
+				UnitController car1 = runningCars [0].GetComponent<UnitController> ();
+				UnitController car2 = runningCars [1].GetComponent<UnitController> ();
+
+				Debug.Log (car1.GetFitness () + " from " + ConvertPercentageToKey (0.25f) + " vs. " + car2.GetFitness () + " from " + ConvertPercentageToKey (0.75f));
+
+				if (car1.GetFitness () > car2.GetFitness ()) {
+
+					if (car1.GetFitness () > bestFitnessInMap) {
+						bestFitnessInMap = car1.GetFitness ();
+						bestKeyInMap = ConvertPercentageToKey (0.25f);
+					}
+
+					maxKey = (int)(maxKey - ((maxKey - minKey) * 0.5f));
+
+				} else {
+					if (car2.GetFitness () >= bestFitnessInMap) {
+						bestFitnessInMap = car2.GetFitness ();
+						bestKeyInMap = ConvertPercentageToKey (0.75f);
+					}
+
+					minKey = (int)(minKey + ((maxKey - minKey) * 0.5f));
+				}
+
+				Debug.Log ("Best Fitness: " + bestFitnessInMap + " at " + bestKeyInMap);
+
+				ControllerMap.Clear ();
+				foreach (GameObject car in runningCars) {
+					Destroy (car);
+				}
+				runningCars.Clear ();
+
+				if (ConvertPercentageToKey (lowTesting) != ConvertPercentageToKey (highTesting)) {
+					InstantiateCar (ConvertPercentageToKey (lowTesting));
+					InstantiateCar (ConvertPercentageToKey (highTesting));
+				} else {
+					InstantiateCar (bestKeyInMap);
+					Debug.Log ("Found best car in map at " + bestKeyInMap);
+					searching = false;
+				}
+
+			}
+		}
+
+	}
+
+	void CheckFPS ()
+	{
+		Time.timeScale = evoSpeed;
 		//  evaluationStartTime += Time.deltaTime;
-
 		timeLeft -= Time.deltaTime;
 		accum += Time.timeScale / Time.deltaTime;
 		++frames;
-
 		if (timeLeft <= 0.0) {
 			var fps = accum / frames;
 			timeLeft = updateInterval;
@@ -158,7 +212,7 @@ public class Optimizer : MonoBehaviour
 
 			foreach (FileInfo f in info) {
 				int key = int.Parse (f.Name.Substring (0, f.Name.Length - 4));
-				print (key);
+
 				try {
 					using (XmlReader xr = XmlReader.Create (path + f.Name))
 						map.Add (key, NeatGenomeXmlIO.ReadCompleteGenomeList (xr, false, (NeatGenomeFactory)experiment.CreateGenomeFactory ()) [0]);
@@ -187,92 +241,6 @@ public class Optimizer : MonoBehaviour
 		loadMap ();
 	}
 
-	public IEnumerator StartMAP ()
-	{
-		if (carKnowsDrag) {
-			NUM_INPUTS = 6;
-		} 
-		if (!randomDrag) {
-			Trials = 1;
-		}
-
-		mapRunning = true;
-
-		//TODO SetupNewExperiment skal fixes til MAP Elites
-		SetupNewMAPExperiment ();
-
-		//		mapLength = (int)((maxRain - minRain) / rainInterval);
-		map = new Dictionary<int, NeatGenome> ();//NeatGenome[10];
-
-
-
-		// print("Loading: " + popFileLoadPath);
-		_ea = experiment.CreateEvolutionAlgorithm (popFileSavePath);
-		startTime = DateTime.Now;
-
-		_ea.UpdateEvent += new EventHandler (ea_UpdateEvent);
-		_ea.PausedEvent += new EventHandler (ea_PauseEvent);
-
-		IList<NeatGenome> unTestedGenomes = _ea.GenomeList;
-		bool firstRun = true;
-
-		//Loop this:
-//		while (firstRun) {
-		List<NeatGenome> children = new List<NeatGenome> ();
-		if (firstRun) {
-			for (int i = 0; i < 1; i++) {
-				NeatGenome mom = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-				NeatGenome dad = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-				NeatGenome child = mom.CreateOffspring (dad, _ea.CurrentGeneration);
-				children.Add (child);
-			}
-			firstRun = false;
-		} else {
-				
-//				for (int i = 0; i < 10; i++) {
-//					
-//					NeatGenome mom = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-//					NeatGenome dad = unTestedGenomes [UnityEngine.Random.Range (0, unTestedGenomes.Count)];// = new NeatGenome (); // Should be selected random from the map.
-//					NeatGenome child = mom.CreateOffspring (dad, _ea.CurrentGeneration);
-//					children.Add (child);
-//				}
-		}
-		//Get 2 random genomes
-
-
-		// Create offspring like this
-		// (Maybe do this with a lot of genomes at once, for optimization)
-
-		print ("Test length: " + children.Count);
-		yield return StartCoroutine (_ea.EvaluateList (children));
-
-		IList<NeatGenome> testedGenomes = _ea.GenomeList;
-		print ("TestedGenomes = " + testedGenomes.Count);
-
-		foreach (NeatGenome genome in testedGenomes) {
-			int key = convertAvgSpeedToKey (genome.EvaluationInfo.AvgSpeed);
-			if (key == -1)
-				continue;
-			if (map.ContainsKey (key)) {
-				if (map [key] != null) {
-					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
-						map [key] = genome;
-					}
-				} else {
-					map [key] = genome;
-				}
-			} else {
-				map.Add (key, genome);
-			}
-		}
-		foreach (KeyValuePair<int,NeatGenome> value in map) {
-			//Now you can access the key and value both separately from this attachStat as:
-			Debug.Log ("Key: " + value.Key);
-			Debug.Log ("Fitness: " + value.Value.EvaluationInfo.Fitness);
-		}
-//		}
-	}
-
 	public void StartMAP2 ()
 	{
 		if (carKnowsDrag) {
@@ -282,7 +250,6 @@ public class Optimizer : MonoBehaviour
 			Trials = 1;
 		}
 
-		mapRunning = true;
 
 		//TODO SetupNewExperiment skal fixes til MAP Elites
 		SetupNewMAPExperiment ();
@@ -313,40 +280,9 @@ public class Optimizer : MonoBehaviour
 			children.Add (child);
 		}
 
-
-
-		// Create offspring like this
-		// (Maybe do this with a lot of genomes at once, for optimization)
-
 		print ("Test length: " + children.Count);
 		_ea.GenomeList = children;
 		_ea.StartContinueMAP2 ();
-
-//		IList<NeatGenome> testedGenomes = _ea.GenomeList;
-//		print ("TestedGenomes = " + testedGenomes.Count);
-//
-//		foreach (NeatGenome genome in testedGenomes) {
-//			int key = convertAvgSpeedToKey (genome.EvaluationInfo.AvgSpeed);
-//			if (key == -1)
-//				continue;
-//			if (map.ContainsKey (key)) {
-//				if (map [key] != null) {
-//					if (genome.EvaluationInfo.Fitness > map [key].EvaluationInfo.Fitness) {
-//						map [key] = genome;
-//					}
-//				} else {
-//					map [key] = genome;
-//				}
-//			} else {
-//				map.Add (key, genome);
-//			}
-//		}
-//		foreach (KeyValuePair<int,NeatGenome> value in map) {
-//			//Now you can access the key and value both separately from this attachStat as:
-//			Debug.Log ("Key: " + value.Key);
-//			Debug.Log ("Fitness: " + value.Value.EvaluationInfo.Fitness);
-//		}
-//		//		}
 	}
 
 
@@ -389,40 +325,6 @@ public class Optimizer : MonoBehaviour
 		Generation = _ea.CurrentGeneration;
 		ChampAvgSpeed = _ea.CurrentChampGenome.EvaluationInfo.AvgSpeed;
 
- 
-//		if (Generation % switchTrackAfterGames == 0 && Generation != 0 && trackStartPositions.Length > 1) {
-//			trackCounter++;
-//			StartPos = trackStartPositions [trackCounter];
-//			if (trackCounter >= trackStartPositions.Length) {
-//				trackCounter = 0;
-//			}
-//		}
-
-//		if ((Generation % switchRainAfterGames == 0 || bestFitness > StoppingFitness) && Generation != 0) {
-//			if (rain == maxRain) {
-//				// STOP
-//				StopEA ();
-//			} else {
-//				StopEA ();
-//
-//				rain += rainInterval;
-//				Unit.GetComponent<CarController> ().rain = rain;
-//
-//				bestFitness = 0;
-//
-//				champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
-//				popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);  		
-//
-//				SetupNewExperiment ();
-//				StartEA ();
-//
-//			}
-//		} 
-
-
-		//    Utility.Log(string.Format("Moving average: {0}, N: {1}", _ea.Statistics._bestFitnessMA.Mean, _ea.Statistics._bestFitnessMA.Length));
-
-    
 	}
 
 	void SaveGenome (NeatGenome genome, string fileName)
@@ -527,40 +429,6 @@ public class Optimizer : MonoBehaviour
 
 		ChampAvgSpeed = _ea.CurrentChampGenome.EvaluationInfo.AvgSpeed;
 
-
-		//		if (Generation % switchTrackAfterGames == 0 && Generation != 0 && trackStartPositions.Length > 1) {
-		//			trackCounter++;
-		//			StartPos = trackStartPositions [trackCounter];
-		//			if (trackCounter >= trackStartPositions.Length) {
-		//				trackCounter = 0;
-		//			}
-		//		}
-
-		//		if ((Generation % switchRainAfterGames == 0 || bestFitness > StoppingFitness) && Generation != 0) {
-		//			if (rain == maxRain) {
-		//				// STOP
-		//				StopEA ();
-		//			} else {
-		//				StopEA ();
-		//
-		//				rain += rainInterval;
-		//				Unit.GetComponent<CarController> ().rain = rain;
-		//
-		//				bestFitness = 0;
-		//
-		//				champFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.best.xml", rain, folder_prefix);
-		//				popFileSavePath = Application.persistentDataPath + string.Format ("/{1}/{0:0.00}.pop.xml", rain, folder_prefix);  		
-		//
-		//				SetupNewExperiment ();
-		//				StartEA ();
-		//
-		//			}
-		//		} 
-
-
-		//    Utility.Log(string.Format("Moving average: {0}, N: {1}", _ea.Statistics._bestFitnessMA.Mean, _ea.Statistics._bestFitnessMA.Length));
-
-
 	}
 
 
@@ -573,14 +441,6 @@ public class Optimizer : MonoBehaviour
 			
 		
 			FileInfo[] info = dir.GetFiles ("*best.xml");
-
-
-
-			// If there is not same amount of files as there is rain conditions.
-//			if (map.Length != info.Length) {
-//				Debug.Log (map.Length + " - " + info.Length);
-//				Debug.Log ("Number of files not matching Map length! No files loaded.");
-//			} else {
 			
 			foreach (FileInfo f in info) {
 			
@@ -634,9 +494,7 @@ public class Optimizer : MonoBehaviour
        
 
       
-		EARunning = false;    
-		mapRunning = false;
-        
+		EARunning = false;            
 	}
 
 	public void StopEA ()
@@ -673,34 +531,59 @@ public class Optimizer : MonoBehaviour
 		Destroy (ct.gameObject);
 	}
 
-	public void RunBest ()
+	public void RunMap ()
 	{
+		SetupNewExperiment ();
 		Time.timeScale = 1;
+		map = new Dictionary<int, NeatGenome> ();
+		runningCars = new List<GameObject> ();
+		loadMap ();
+		maxKey = int.MinValue;
+		minKey = int.MaxValue;
 
-		//NeatGenome genome = map [bestCounter];
-		NeatGenome genome = loadBest ();
-		if (genome == null) {
-			Debug.Log ("Elite was NULL.");
-			return;
+		foreach (int key in map.Keys) {
+			if (key > maxKey)
+				maxKey = key;
+			if (key < minKey)
+				minKey = key;
 		}
+		print ("Lowest Key: " + minKey + " - Highest Key: " + maxKey);
+
+		InstantiateCar (ConvertPercentageToKey (0.5f));
+		InstantiateCar (ConvertPercentageToKey (lowTesting));
+		InstantiateCar (ConvertPercentageToKey (highTesting));
+
+		mapRunning = true;
+	}
+
+	void InstantiateCar (int key)
+	{
 		// Get a genome decoder that can convert genomes to phenomes.
 		var genomeDecoder = experiment.CreateGenomeDecoder ();
-
 		// Decode the genome into a phenome (neural network).
-		var phenome = genomeDecoder.Decode (genome);
-
-		GameObject obj = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
+		// 30-((30-0)*(1-0,75))
+		var phenome = genomeDecoder.Decode (map [key]);
+		GameObject car = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
 		//obj.GetComponent<CarController> ().rain = minRain + (bestCounter * rainInterval);
-		UnitController controller = obj.GetComponent<UnitController> ();
-
+		UnitController controller = car.GetComponent<UnitController> ();
+		runningCars.Add (car);
 		ControllerMap.Add (phenome, controller);
-
 		controller.Activate (phenome);
+	}
 
-		bestCounter++;
-//		if (bestCounter >= map.Length)
-//			bestCounter = 0;
-			
+	int ConvertPercentageToKey (float percentage)
+	{
+		return (int)(maxKey - ((maxKey - minKey) * (1.0f - percentage)));
+	}
+
+	public void StopRunMap ()
+	{
+		mapRunning = false;
+		ControllerMap.Clear ();
+		foreach (GameObject car in runningCars) {
+			Destroy (car);
+		}
+		runningCars.Clear ();
 	}
 
 	public float GetFitness (IBlackBox box)
@@ -727,15 +610,18 @@ public class Optimizer : MonoBehaviour
 		if (GUI.Button (new Rect (10, 60, 100, 40), "Stop EA")) {
 			StopEA ();
 		}
-		if (GUI.Button (new Rect (10, 110, 100, 40), "Run best")) {
-			RunBest ();
+		if (GUI.Button (new Rect (10, 110, 100, 40), "Run Map")) {
+			RunMap ();
 		}
-		if (GUI.Button (new Rect (10, 160, 100, 40), "Start MAP")) {
-			StartMAP2 ();
+		if (GUI.Button (new Rect (10, 160, 100, 40), "Stop Map")) {
+			StopRunMap ();
 		}
-		if (GUI.Button (new Rect (10, 210, 100, 40), "Stop MAP")) {
-			StopMAP ();
-		}
+//		if (GUI.Button (new Rect (10, 210, 100, 40), "Start MAP Training")) {
+//			StartMAP2 ();
+//		}
+//		if (GUI.Button (new Rect (10, 260, 100, 40), "Stop MAP Training")) {
+//			StopMAP ();
+//		}
 
 		GUI.Button (new Rect (10, Screen.height - 140, 140, 100), string.Format ("Generation: {0}\nFitness: {1:0.00}\nBestFitness: {2:0.00}\nMeanFitness: {3:0.00}\nBest AvgSpeed: {4:0.00}\n", Generation, Fitness, bestFitness, MeanFitness, ChampAvgSpeed));
 	}
