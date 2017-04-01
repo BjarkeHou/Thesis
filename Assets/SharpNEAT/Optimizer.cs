@@ -45,6 +45,17 @@ public class Optimizer : MonoBehaviour
 	float lowTesting = 0.25f;
 	bool searching = true;
 
+	// Running tests
+	public float trialDurationPerNetwork = 500.0f;
+	float testDrag = 1.0f;
+	bool testRunning = false;
+	int networkCounter = 1;
+	float testStopwatch = 0.0f;
+	float searchStopwatch = 0.0f;
+	NeatGenome intelligentNetwork;
+	NeatGenome unIntelligentNetwork;
+	StreamWriter sw;
+
 	private GameObject StartPos;
 
 	Dictionary<IBlackBox, UnitController> ControllerMap = new Dictionary<IBlackBox, UnitController> ();
@@ -94,61 +105,184 @@ public class Optimizer : MonoBehaviour
 		
 		CheckFPS ();       
 
-		if (mapRunning) {
-			stopwatch += Time.deltaTime;
 
-			if (stopwatch > TrialDuration && searching) {
-				stopwatch = 0.0f;
-				if (runningCars.Count == 3) {
-					bestFitnessInMap = runningCars [0].GetComponent<UnitController> ().GetFitness ();
-					bestKeyInMap = ConvertPercentageToKey (0.5f);
-					Destroy (runningCars [0]);
-					runningCars.RemoveAt (0);
-				}
 
-				UnitController car1 = runningCars [0].GetComponent<UnitController> ();
-				UnitController car2 = runningCars [1].GetComponent<UnitController> ();
+		if (testRunning) {
 
-				Debug.Log (car1.GetFitness () + " from " + ConvertPercentageToKey (0.25f) + " vs. " + car2.GetFitness () + " from " + ConvertPercentageToKey (0.75f));
+			TestUpdate ();
+		}
 
-				if (car1.GetFitness () > car2.GetFitness ()) {
 
-					if (car1.GetFitness () > bestFitnessInMap) {
-						bestFitnessInMap = car1.GetFitness ();
-						bestKeyInMap = ConvertPercentageToKey (0.25f);
+
+
+	}
+
+	void RunTest ()
+	{
+
+		SetupNewExperiment ();
+
+		map = new Dictionary<int, NeatGenome> ();
+		runningCars = new List<GameObject> ();
+		loadMap ();
+		maxKey = int.MinValue;
+		minKey = int.MaxValue;
+
+		foreach (int key in map.Keys) {
+			if (key > maxKey)
+				maxKey = key;
+			if (key < minKey)
+				minKey = key;
+		}
+		print ("Lowest Key: " + minKey + " - Highest Key: " + maxKey);
+
+		InstantiateCar (map [ConvertPercentageToKey (0.5f)]);
+		InstantiateCar (map [ConvertPercentageToKey (lowTesting)]);
+		InstantiateCar (map [ConvertPercentageToKey (highTesting)]);
+
+		foreach (GameObject car in runningCars) {
+			car.GetComponent<Rigidbody> ().drag = testDrag;
+		}
+
+		mapRunning = true;
+
+		// Load the two seperate networks.
+
+
+//		unIntelligentNetwork = loadGenome ("unknown");
+
+
+		Time.timeScale = 1;
+
+//		maxKey = int.MinValue;
+//		minKey = int.MaxValue;
+
+//		foreach (int key in map.Keys) {
+//			if (key > maxKey)
+//				maxKey = key;
+//			if (key < minKey)
+//				minKey = key;
+		// File writer
+		sw = File.CreateText (Application.persistentDataPath + string.Format ("/{0}/map_testResults.txt", folder_prefix));
+		testRunning = true;
+	}
+
+	void TestUpdate ()
+	{
+
+
+		if (testDrag >= 0.25f) {
+
+			if (searching) {
+				if (MapSearchUpdate ()) {
+					InstantiateCar (map [bestKeyInMap]);
+					foreach (GameObject car in runningCars) {
+						car.GetComponent<Rigidbody> ().drag = testDrag;
 					}
 
-					maxKey = (int)(maxKey - ((maxKey - minKey) * 0.5f));
-
-				} else {
-					if (car2.GetFitness () >= bestFitnessInMap) {
-						bestFitnessInMap = car2.GetFitness ();
-						bestKeyInMap = ConvertPercentageToKey (0.75f);
-					}
-
-					minKey = (int)(minKey + ((maxKey - minKey) * 0.5f));
 				}
+			} else if (testStopwatch > trialDurationPerNetwork) {
+				UnitController car = runningCars [0].GetComponent<UnitController> ();
 
-				Debug.Log ("Best Fitness: " + bestFitnessInMap + " at " + bestKeyInMap);
+				float fitness = car.GetFitness ();
+				float bestLapTime = car.GetBestLapTime ();
+				float avgSpeed = car.GetAvgSpeed ();
+				int piecesTraveled = car.GetRoadPiecesTraveled ();
+				int wallhits = car.GetWallHits ();
 
-				ControllerMap.Clear ();
-				foreach (GameObject car in runningCars) {
-					Destroy (car);
-				}
+				string log = string.Format ("{0};{1};{2};{3};{4};{5};{6}", testDrag, fitness, bestLapTime, avgSpeed, piecesTraveled, wallhits, searchStopwatch);
+				sw.WriteLine (log);
+				print (log);
+
+				testDrag -= 0.1000000000f;
+				Destroy (runningCars [0]);
 				runningCars.Clear ();
+				//InstantiateCar (intelligentNetwork);
+//				runningCars [0].GetComponent<Rigidbody> ().drag = testDrag;
+				testStopwatch = 0.0f;
+				searchStopwatch = 0.0f;
+				searching = true;
 
-				if (ConvertPercentageToKey (lowTesting) != ConvertPercentageToKey (highTesting)) {
-					InstantiateCar (ConvertPercentageToKey (lowTesting));
-					InstantiateCar (ConvertPercentageToKey (highTesting));
-				} else {
-					InstantiateCar (bestKeyInMap);
-					Debug.Log ("Found best car in map at " + bestKeyInMap);
-					searching = false;
+				maxKey = int.MinValue;
+				minKey = int.MaxValue;
+
+				foreach (int key in map.Keys) {
+					if (key > maxKey)
+						maxKey = key;
+					if (key < minKey)
+						minKey = key;
 				}
+				print ("Lowest Key: " + minKey + " - Highest Key: " + maxKey);
 
+				InstantiateCar (map [ConvertPercentageToKey (0.5f)]);
+				InstantiateCar (map [ConvertPercentageToKey (lowTesting)]);
+				InstantiateCar (map [ConvertPercentageToKey (highTesting)]);
+
+				foreach (GameObject go in runningCars) {
+					go.GetComponent<Rigidbody> ().drag = testDrag;
+				}
+			} 
+		} else {
+			testRunning = false;
+			sw.Close ();
+			print ("TEST DONE GET GOING!");
+		}
+
+
+		testStopwatch += Time.deltaTime;
+		
+	}
+
+	bool MapSearchUpdate ()
+	{
+		stopwatch += Time.deltaTime;
+		searchStopwatch += Time.deltaTime;
+		if (stopwatch > TrialDuration && searching) {
+			stopwatch = 0.0f;
+			if (runningCars.Count == 3) {
+				bestFitnessInMap = runningCars [0].GetComponent<UnitController> ().GetFitness ();
+				bestKeyInMap = ConvertPercentageToKey (0.5f);
+				Destroy (runningCars [0]);
+				runningCars.RemoveAt (0);
+			}
+			UnitController car1 = runningCars [0].GetComponent<UnitController> ();
+			UnitController car2 = runningCars [1].GetComponent<UnitController> ();
+			Debug.Log (car1.GetFitness () + " from " + ConvertPercentageToKey (0.25f) + " vs. " + car2.GetFitness () + " from " + ConvertPercentageToKey (0.75f));
+			if (car1.GetFitness () > car2.GetFitness ()) {
+				if (car1.GetFitness () > bestFitnessInMap) {
+					bestFitnessInMap = car1.GetFitness ();
+					bestKeyInMap = ConvertPercentageToKey (0.25f);
+				}
+				maxKey = (int)(maxKey - ((maxKey - minKey) * 0.5f));
+			} else {
+				if (car2.GetFitness () >= bestFitnessInMap) {
+					bestFitnessInMap = car2.GetFitness ();
+					bestKeyInMap = ConvertPercentageToKey (0.75f);
+				}
+				minKey = (int)(minKey + ((maxKey - minKey) * 0.5f));
+			}
+			Debug.Log ("Best Fitness: " + bestFitnessInMap + " at " + bestKeyInMap);
+			ControllerMap.Clear ();
+			foreach (GameObject car in runningCars) {
+				Destroy (car);
+			}
+			runningCars.Clear ();
+			if (ConvertPercentageToKey (lowTesting) != ConvertPercentageToKey (highTesting)) {
+				InstantiateCar (map [ConvertPercentageToKey (lowTesting)]);
+				InstantiateCar (map [ConvertPercentageToKey (highTesting)]);
+
+				foreach (GameObject car in runningCars) {
+					car.GetComponent<Rigidbody> ().drag = testDrag;
+				}
+			} else {
+//				InstantiateCar (map [bestKeyInMap]);
+				Debug.Log ("Found best car in map at " + bestKeyInMap);
+				searching = false;
+				return true;
 			}
 		}
 
+		return false;
 	}
 
 	void CheckFPS ()
@@ -432,7 +566,7 @@ public class Optimizer : MonoBehaviour
 	}
 
 
-	private NeatGenome loadBest ()
+	private NeatGenome loadGenome (string filename)
 	{
 		NeatGenome genome = null;
 
@@ -440,8 +574,8 @@ public class Optimizer : MonoBehaviour
 		if (dir.Exists) {
 			
 		
-			FileInfo[] info = dir.GetFiles ("*best.xml");
-			
+			FileInfo[] info = dir.GetFiles (filename + ".xml");
+			print (info.Length);
 			foreach (FileInfo f in info) {
 			
 				try {
@@ -549,20 +683,20 @@ public class Optimizer : MonoBehaviour
 		}
 		print ("Lowest Key: " + minKey + " - Highest Key: " + maxKey);
 
-		InstantiateCar (ConvertPercentageToKey (0.5f));
-		InstantiateCar (ConvertPercentageToKey (lowTesting));
-		InstantiateCar (ConvertPercentageToKey (highTesting));
+		InstantiateCar (map [ConvertPercentageToKey (0.5f)]);
+		InstantiateCar (map [ConvertPercentageToKey (lowTesting)]);
+		InstantiateCar (map [ConvertPercentageToKey (highTesting)]);
 
 		mapRunning = true;
 	}
 
-	void InstantiateCar (int key)
+	void InstantiateCar (NeatGenome genome)
 	{
 		// Get a genome decoder that can convert genomes to phenomes.
 		var genomeDecoder = experiment.CreateGenomeDecoder ();
 		// Decode the genome into a phenome (neural network).
 		// 30-((30-0)*(1-0,75))
-		var phenome = genomeDecoder.Decode (map [key]);
+		var phenome = genomeDecoder.Decode (genome);
 		GameObject car = Instantiate (Unit, StartPos.transform.position, StartPos.transform.rotation) as GameObject;
 		//obj.GetComponent<CarController> ().rain = minRain + (bestCounter * rainInterval);
 		UnitController controller = car.GetComponent<UnitController> ();
@@ -615,6 +749,9 @@ public class Optimizer : MonoBehaviour
 		}
 		if (GUI.Button (new Rect (10, 160, 100, 40), "Stop Map")) {
 			StopRunMap ();
+		}
+		if (GUI.Button (new Rect (10, 210, 100, 40), "Start Test")) {
+			RunTest ();
 		}
 //		if (GUI.Button (new Rect (10, 210, 100, 40), "Start MAP Training")) {
 //			StartMAP2 ();

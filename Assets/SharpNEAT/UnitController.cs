@@ -12,4 +12,10 @@ public abstract class UnitController : MonoBehaviour
 	public abstract float GetFitness ();
 
 	public abstract float GetAvgSpeed ();
+
+	public abstract float GetBestLapTime ();
+
+	public abstract int GetRoadPiecesTraveled ();
+
+	public abstract int GetWallHits ();
 }

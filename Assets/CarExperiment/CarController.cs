@@ -39,7 +39,22 @@ public class CarController : UnitController
 	void Start ()
 	{
 	}
-	
+
+	public override int GetRoadPiecesTraveled ()
+	{
+		return 0;
+	}
+
+	public override int GetWallHits ()
+	{
+		return WallHits;
+	}
+
+	public override float GetBestLapTime ()
+	{
+		return 0.0f;
+	}
+
 	// Update is called once per frame
 	void FixedUpdate ()
 	{

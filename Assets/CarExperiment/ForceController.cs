@@ -25,6 +25,9 @@ public class ForceController : UnitController
 	bool MovingForward = true;
 	bool IsRunning;
 
+	float stopwatch = 0.0f;
+	float bestLapTime = float.MaxValue;
+
 	float distanceTraveled = 0.0f;
 	float timeExisted = 0.0f;
 	Vector3 lastPosition;
@@ -48,7 +51,7 @@ public class ForceController : UnitController
 	// Update is called once per frame
 	void FixedUpdate ()
 	{
-
+		stopwatch += Time.deltaTime;
 		if (manuel) {
 			if (Input.GetKey (KeyCode.J) && !Input.GetKey (KeyCode.L)) {
 				transform.Rotate (0, -rotationSpeed, 0);
@@ -121,7 +124,7 @@ public class ForceController : UnitController
 	{
 		RaycastHit hit;
 		//Debug.DrawRay (transform.position + transform.forward * 1.1f, transform.TransformDirection (direction.normalized));
-		if (Physics.Raycast (transform.position + transform.forward * 1.1f, transform.TransformDirection (direction.normalized), out hit, SensorRange)) {
+		if (Physics.Raycast (transform.position + transform.forward * 0.5f, transform.TransformDirection (direction.normalized), out hit, SensorRange)) {
 			if (hit.collider.tag.Equals ("Wall")) {
 				return (1 - hit.distance / SensorRange);
 			}
@@ -146,6 +149,9 @@ public class ForceController : UnitController
 		if (LastPiece > 2 && MovingForward && passedWaypoint) {
 			Lap++;
 			passedWaypoint = false;
+			if (stopwatch < bestLapTime)
+				bestLapTime = stopwatch;
+			stopwatch = 0.0f;
 		}
 	}
 
@@ -166,6 +172,21 @@ public class ForceController : UnitController
 			return fit;
 		}
 		return 0;
+	}
+
+	public override int GetRoadPiecesTraveled ()
+	{
+		return (((Lap - 1) * maxRoadPieces) + CurrentPiece);
+	}
+
+	public override int GetWallHits ()
+	{
+		return WallHits;
+	}
+
+	public override float GetBestLapTime ()
+	{
+		return bestLapTime;
 	}
 
 	public int GetHighestPiece ()
